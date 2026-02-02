@@ -1,11 +1,10 @@
 """
-PostgreSQL database connection using SQLAlchemy.
+PostgreSQL database connection using psycopg2.
 """
 import os
 import sys
+import psycopg2
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,23 +15,17 @@ POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 
-# Create PostgreSQL connection string
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
+# Database connection
+connection = None
 
-# Create SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
-
-# Create declarative base
-Base = declarative_base()
-
-# Create session factory
-SessionLocal = sessionmaker(bind=engine)
-
-# Test connection
 try:
-    connection = engine.connect()
+    connection = psycopg2.connect(
+        host=POSTGRES_HOST,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=POSTGRES_DB
+    )
     print("Database connected successfully")
-    connection.close()
-except Exception as e:
+except psycopg2.Error as e:
     print(f"Error connecting to database: {e}")
     sys.exit(1)
