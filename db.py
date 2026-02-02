@@ -1,9 +1,10 @@
 """
-SQLAlchemy database initialization.
+PostgreSQL database connection using psycopg2.
 """
 import os
+import sys
+import psycopg2
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,10 +15,17 @@ POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 
-# Print variables for testing
-print(f"POSTGRES_HOST: {POSTGRES_HOST}")
-print(f"POSTGRES_USER: {POSTGRES_USER}")
-print(f"POSTGRES_PASSWORD: {POSTGRES_PASSWORD}")
-print(f"POSTGRES_DB: {POSTGRES_DB}")
+# Database connection
+connection = None
 
-db = SQLAlchemy()
+try:
+    connection = psycopg2.connect(
+        host=POSTGRES_HOST,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=POSTGRES_DB
+    )
+    print("Database connected successfully")
+except psycopg2.Error as e:
+    print(f"Error connecting to database: {e}")
+    sys.exit(1)
