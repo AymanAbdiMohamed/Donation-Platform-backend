@@ -1,53 +1,22 @@
 """
-ALL models in ONE file.
-Models: User, Charity, CharityApplication, Donation
+SQLAlchemy User model.
 """
-from db import db
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from sqlalchemy import Column, Integer, String
+from db import Base
 
 
-class User(db.Model):
-    """
-    User model - donors, charities, and admins.
-    
-    Roles: 'donor', 'charity', 'admin'
-    """
+class User(Base):
+    """User model - donors, charities, and admins."""
     __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="donor")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id = Column(Integer, primary_key=True)
+    username = Column(String(80), nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    password = Column(String(256), nullable=False)
+    role = Column(String(20), nullable=False)  # DONOR, CHARITY, ADMIN
 
-    # Relationships
-    donations = db.relationship("Donation", backref="donor", lazy="dynamic", foreign_keys="Donation.donor_id")
-    charity = db.relationship("Charity", backref="user", uselist=False)
-
-    def set_password(self, password):
-        """Hash and set password."""
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        """Verify password."""
-        return check_password_hash(self.password_hash, password)
-
-    def to_dict(self):
-        """Serialize user (excludes sensitive fields)."""
-        return {
-            "id": self.id,
-            "email": self.email,
-            "role": self.role,
-            "created_at": self.created_at.isoformat() if self.created_at else None
-        }
-
-
-class CharityApplication(db.Model):
-    """
-    Charity application - pending review by admin.
-    
-    Status: 'pending', 'approved', 'rejected'
+    def __repr__(self):
+        return f"<User id={self.id} username={self.username} role={self.role}>"
     """
     __tablename__ = "charity_applications"
 
