@@ -1,7 +1,7 @@
 """
 SQLAlchemy models.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -52,10 +52,12 @@ class CharityApplication(Base):
     description = Column(Text, nullable=True)
     status = Column(String(20), default="pending")
     rejection_reason = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     reviewed_at = Column(DateTime, nullable=True)
 
     def to_dict(self):
+        """Serialize application."""
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -80,7 +82,7 @@ class Charity(Base):
     description = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     donations = relationship("Donation", backref="charity")
@@ -113,7 +115,7 @@ class Donation(Base):
     is_anonymous = Column(Boolean, default=False)
     is_recurring = Column(Boolean, default=False)
     message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self, include_donor=False):
         data = {
