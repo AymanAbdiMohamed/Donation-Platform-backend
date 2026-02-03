@@ -1,7 +1,7 @@
 """
 SQLAlchemy User model.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -19,38 +19,38 @@ class User(Base):
     password = Column(String(256), nullable=False)
     role = Column(String(20), nullable=False)  # DONOR, CHARITY, ADMIN
 
-        def __repr__(self):
-            return f"<User id={self.id} username={self.username} role={self.role}>"
-    
-    
-    class CharityApplication(Base):
-        """Charity application request."""
-        __tablename__ = "charity_applications"
-    
-        id = Column(Integer, primary_key=True)
-        user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-        name = Column(String(200), nullable=False)
-        description = Column(Text, nullable=True)
-        status = Column(String(20), default="pending")
-        rejection_reason = Column(Text, nullable=True)
-        created_at = Column(DateTime, default=datetime.utcnow)
-        reviewed_at = Column(DateTime, nullable=True)
-    
-        # Relationships
-        applicant = relationship("User", backref="applications")
-    
-        def to_dict(self):
-            """Serialize application."""
-            return {
-                "id": self.id,
-                "user_id": self.user_id,
-                "name": self.name,
-                "description": self.description,
-                "status": self.status,
-                "rejection_reason": self.rejection_reason,
-                "created_at": self.created_at.isoformat() if self.created_at else None,
-                "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None
-            }
+    def __repr__(self):
+        return f"<User id={self.id} username={self.username} role={self.role}>"
+
+
+class CharityApplication(Base):
+    """Charity application request."""
+    __tablename__ = "charity_applications"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")
+    rejection_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    reviewed_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    applicant = relationship("User", backref="applications")
+
+    def to_dict(self):
+        """Serialize application."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "name": self.name,
+            "description": self.description,
+            "status": self.status,
+            "rejection_reason": self.rejection_reason,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None
+        }
 
 
 class Charity(Base):
