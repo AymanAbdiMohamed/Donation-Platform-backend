@@ -10,7 +10,7 @@ from auth import jwt
 from db import init_db
 from routes.auth import auth_bp
 from routes.admin import admin_bp
-from routes.charity import charity_bp
+from routes.charity import charity_bp  # unified charity blueprint
 
 load_dotenv()
 
@@ -30,8 +30,7 @@ init_db()
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix="/auth")
 app.register_blueprint(admin_bp, url_prefix="/admin")
-app.register_blueprint(charity_bp, url_prefix="/charity")
-
+app.register_blueprint(charity_bp, url_prefix="/charity")  # unified charity route
 
 @app.route("/health", methods=["GET"])
 def health():

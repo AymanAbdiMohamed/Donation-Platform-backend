@@ -1,18 +1,15 @@
 """
 Admin routes blueprint.
-
-BE2 Day 1 - Route Review:
-- All routes in this file should be admin-only
-- Admin routes handle: user management, charity approval/rejection, platform oversight
-- These routes require @role_required('admin') decorator for protection
+All routes are admin-only.
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-
+from datetime import datetime
+from db import SessionLocal
+from models import CharityApplication, Charity
 from auth import role_required
 
 admin_bp = Blueprint("admin", __name__)
-
 
 # =========================
 # Admin-only routes
@@ -26,7 +23,13 @@ def get_all_users():
     Get all users.
     Admin-only: View all registered users on the platform.
     """
-    return jsonify({"message": "Admin access granted", "route": "get_all_users"}), 200
+    session = SessionLocal()
+    try:
+        # Placeholder: Fetch all users (replace with actual User model)
+        users = []  # Replace with: session.query(User).all()
+        return jsonify({"users": [user.to_dict() for user in users]}), 200
+    finally:
+        session.close()
 
 
 @admin_bp.route("/applications", methods=["GET"])
@@ -37,7 +40,18 @@ def get_charity_applications():
     Get all charity applications.
     Admin-only: Review pending charity applications.
     """
-    return jsonify({"message": "Admin access granted", "route": "get_charity_applications"}), 200
+    status = request.args.get("status")
+    session = SessionLocal()
+    try:
+        query = session.query(CharityApplication)
+        if status:
+            query = query.filter_by(status=status)
+        applications = query.order_by(CharityApplication.created_at.desc()).all()
+        return jsonify({
+            "applications": [app.to_dict() for app in applications]
+        }), 200
+    finally:
+        session.close()
 
 
 @admin_bp.route("/applications/<int:app_id>/approve", methods=["POST"])
@@ -48,7 +62,50 @@ def approve_application(app_id):
     Approve a charity application.
     Admin-only: Approve pending charity applications.
     """
-    return jsonify({"message": "Admin access granted", "route": "approve_application", "app_id": app_id}), 200
+    session = SessionLocal()
+    try:
+        application = session.query(CharityApplication).get(app_id)
+        if not application:
+            return jsonify({
+                "error": "Application not found",
+                "message": f"No application found with ID {app_id}"
+            }), 404
+
+        if application.status != "pending":
+            return jsonify({
+                "error": "Invalid status",
+                "message": f"Application is already {application.status}"
+            }), 400
+
+        # Update application
+        application.status = "approved"
+        application.reviewed_at = datetime.utcnow()
+
+        # Create charity
+        charity = Charity(
+            name=application.name,
+            description=application.description,
+            user_id=application.user_id
+        )
+
+        session.add(charity)
+        session.commit()
+        session.refresh(charity)
+
+        return jsonify({
+            "message": "Application approved successfully",
+            "application": application.to_dict(),
+            "charity": charity.to_dict()
+        }), 200
+
+    except Exception:
+        session.rollback()
+        return jsonify({
+            "error": "Approval failed",
+            "message": "Unable to approve application"
+        }), 500
+    finally:
+        session.close()
 
 
 @admin_bp.route("/applications/<int:app_id>/reject", methods=["POST"])
@@ -59,4 +116,40 @@ def reject_application(app_id):
     Reject a charity application.
     Admin-only: Reject pending charity applications with reason.
     """
-    return jsonify({"message": "Admin access granted", "route": "reject_application", "app_id": app_id}), 200
+    data = request.get_json() or {}
+    reason = data.get("reason", "").strip()
+
+    session = SessionLocal()
+    try:
+        application = session.query(CharityApplication).get(app_id)
+        if not application:
+            return jsonify({
+                "error": "Application not found",
+                "message": f"No application found with ID {app_id}"
+            }), 404
+
+        if application.status != "pending":
+            return jsonify({
+                "error": "Invalid status",
+                "message": f"Application is already {application.status}"
+            }), 400
+
+        application.status = "rejected"
+        application.rejection_reason = reason
+        application.reviewed_at = datetime.utcnow()
+
+        session.commit()
+
+        return jsonify({
+            "message": "Application rejected successfully",
+            "application": application.to_dict()
+        }), 200
+
+    except Exception:
+        session.rollback()
+        return jsonify({
+            "error": "Rejection failed",
+            "message": "Unable to reject application"
+        }), 500
+    finally:
+        session.close()
