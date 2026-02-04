@@ -1,0 +1,64 @@
+"""
+Flask Application Factory.
+
+This module creates and configures the Flask application using the factory pattern.
+This allows for easy testing and multiple app configurations.
+"""
+from flask import Flask
+
+from app.config import Config
+from app.extensions import db, jwt, cors, migrate
+from app.errors import register_error_handlers
+from app.auth import register_jwt_handlers
+
+
+def create_app(config_class=Config):
+    """
+    Create and configure the Flask application.
+    
+    Args:
+        config_class: Configuration class to use (default: Config)
+    
+    Returns:
+        Configured Flask application instance
+    """
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+    
+    # Initialize extensions
+    _init_extensions(app)
+    
+    # Register blueprints
+    _register_blueprints(app)
+    
+    # Register error handlers
+    register_error_handlers(app)
+    
+    # Register JWT handlers
+    register_jwt_handlers(jwt)
+    
+    # Create database tables
+    with app.app_context():
+        db.create_all()
+    
+    return app
+
+
+def _init_extensions(app):
+    """Initialize Flask extensions."""
+    db.init_app(app)
+    jwt.init_app(app)
+    cors.init_app(app)
+    migrate.init_app(app, db)
+
+
+def _register_blueprints(app):
+    """Register all application blueprints."""
+    from app.routes import auth_bp, donor_bp, charity_bp, admin_bp
+    from app.routes.health import health_bp
+    
+    app.register_blueprint(health_bp)
+    app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(donor_bp, url_prefix="/donor")
+    app.register_blueprint(charity_bp, url_prefix="/charity")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
