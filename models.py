@@ -3,18 +3,7 @@ SQLAlchemy models.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
-from sqlalchemy.orm import relationship
-
-from db import Base
+from db import db
 
 
 def utc_now():
@@ -25,20 +14,20 @@ def utc_now():
 # =========================
 # User Model
 # =========================
-class User(Base):
+class User(db.Model):
     """User model - donors, charities, and admins."""
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    username = Column(String(80), nullable=False)
-    email = Column(String(120), unique=True, nullable=False)
-    password = Column(String(256), nullable=False)
-    role = Column(String(20), nullable=False)  # donor, charity, admin
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # donor, charity, admin
 
     # Relationships
-    donations = relationship("Donation", back_populates="donor")
-    charity = relationship("Charity", back_populates="user", uselist=False)
-    applications = relationship("CharityApplication", back_populates="applicant")
+    donations = db.relationship("Donation", back_populates="donor")
+    charity = db.relationship("Charity", back_populates="user", uselist=False)
+    applications = db.relationship("CharityApplication", back_populates="applicant")
 
     def __repr__(self):
         return f"<User id={self.id} username={self.username} role={self.role}>"
@@ -47,22 +36,22 @@ class User(Base):
 # =========================
 # Charity Application Model
 # =========================
-class CharityApplication(Base):
+class CharityApplication(db.Model):
     """Charity application request."""
     __tablename__ = "charity_applications"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    name = Column(String(200), nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(String(20), default="pending")  # pending, approved, rejected
-    rejection_reason = Column(Text, nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default="pending")  # pending, approved, rejected
+    rejection_reason = db.Column(db.Text, nullable=True)
 
-    created_at = Column(DateTime, default=utc_now)
-    reviewed_at = Column(DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
-    applicant = relationship("User", back_populates="applications")
+    applicant = db.relationship("User", back_populates="applications")
 
     def to_dict(self):
         return {
@@ -80,20 +69,20 @@ class CharityApplication(Base):
 # =========================
 # Charity Model
 # =========================
-class Charity(Base):
+class Charity(db.Model):
     """Approved charity organization."""
     __tablename__ = "charities"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(200), nullable=False)
-    description = Column(Text, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=utc_now)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     # Relationships
-    user = relationship("User", back_populates="charity")
-    donations = relationship("Donation", back_populates="charity")
+    user = db.relationship("User", back_populates="charity")
+    donations = db.relationship("Donation", back_populates="charity")
 
     def to_dict(self):
         return {
@@ -109,25 +98,25 @@ class Charity(Base):
 # =========================
 # Donation Model
 # =========================
-class Donation(Base):
+class Donation(db.Model):
     """
     Donation record.
     Amount stored in cents.
     """
     __tablename__ = "donations"
 
-    id = Column(Integer, primary_key=True)
-    amount = Column(Integer, nullable=False)
-    donor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    charity_id = Column(Integer, ForeignKey("charities.id"), nullable=False)
-    is_anonymous = Column(Boolean, default=False)
-    is_recurring = Column(Boolean, default=False)
-    message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Integer, nullable=False)
+    donor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    charity_id = db.Column(db.Integer, db.ForeignKey("charities.id"), nullable=False)
+    is_anonymous = db.Column(db.Boolean, default=False)
+    is_recurring = db.Column(db.Boolean, default=False)
+    message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     # Relationships
-    donor = relationship("User", back_populates="donations")
-    charity = relationship("Charity", back_populates="donations")
+    donor = db.relationship("User", back_populates="donations")
+    charity = db.relationship("Charity", back_populates="donations")
 
     def to_dict(self, include_donor=False):
         data = {
