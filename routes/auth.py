@@ -4,8 +4,7 @@ Authentication routes blueprint.
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
-from db import SessionLocal
-from models import User
+from models import db, User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -25,9 +24,8 @@ def register():
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    session = SessionLocal()
     try:
-        existing_user = session.query(User).filter_by(email=email).first()
+        existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             return jsonify({"error": "Email already exists"}), 409
 
@@ -38,9 +36,8 @@ def register():
             role=role
         )
 
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+        db.session.add(user)
+        db.session.commit()
 
         access_token = create_access_token(
             identity=user.id,
@@ -58,10 +55,8 @@ def register():
         }), 201
 
     except Exception:
-        session.rollback()
+        db.session.rollback()
         return jsonify({"error": "Registration failed"}), 500
-    finally:
-        session.close()
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -78,9 +73,8 @@ def login():
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    session = SessionLocal()
     try:
-        user = session.query(User).filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
 
         if not user or not check_password_hash(user.password, password):
             return jsonify({"error": "Invalid credentials"}), 401
@@ -101,8 +95,6 @@ def login():
 
     except Exception:
         return jsonify({"error": "Login failed"}), 500
-    finally:
-        session.close()
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -111,9 +103,8 @@ def get_current_user():
     """Get current authenticated user."""
     user_id = get_jwt_identity()
     
-    session = SessionLocal()
     try:
-        user = session.query(User).filter_by(id=user_id).first()
+        user = User.query.filter_by(id=user_id).first()
         
         if not user:
             return jsonify({"error": "User not found"}), 404
@@ -125,5 +116,5 @@ def get_current_user():
                 "role": user.role
             }
         }), 200
-    finally:
-        session.close()
+    except Exception:
+        return jsonify({"error": "Failed to get user info"}), 500

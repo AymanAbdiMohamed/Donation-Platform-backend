@@ -25,7 +25,7 @@ CORS(app)
 jwt.init_app(app)
 
 # Initialize database
-init_db()
+init_db(app)
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix="/auth")

@@ -1,39 +1,38 @@
 """
-PostgreSQL database connection using SQLAlchemy.
+Database configuration using Flask-SQLAlchemy.
 """
 import os
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-# Use SQLite for testing if PostgreSQL vars not set
-POSTGRES_HOST = os.getenv("POSTGRES_HOST")
-POSTGRES_USER = os.getenv("POSTGRES_USER")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-POSTGRES_DB = os.getenv("POSTGRES_DB")
+# Initialize SQLAlchemy
+db = SQLAlchemy()
 
-if all([POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
-    DATABASE_URL = (
-        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-        f"@{POSTGRES_HOST}/{POSTGRES_DB}"
-    )
-else:
-    DATABASE_URL = "sqlite:///./test.db"
+def get_database_url():
+    """Get database URL from environment variables."""
+    # Use SQLite for testing if PostgreSQL vars not set
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+    POSTGRES_USER = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_DB = os.getenv("POSTGRES_DB")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True if "postgresql" in DATABASE_URL else False)
+    if all([POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
+        return (
+            f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+            f"@{POSTGRES_HOST}/{POSTGRES_DB}"
+        )
+    else:
+        return "sqlite:///test.db"
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
-Base = declarative_base()
-
-
-def init_db():
-    """Initialize database tables."""
-    Base.metadata.create_all(bind=engine)
+def init_db(app):
+    """Initialize database with Flask app."""
+    app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    db.init_app(app)
+    
+    with app.app_context():
+        db.create_all()
 
