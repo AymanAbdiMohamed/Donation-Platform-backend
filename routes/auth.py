@@ -42,8 +42,14 @@ def register():
         session.commit()
         session.refresh(user)
 
+        access_token = create_access_token(
+            identity=user.id,
+            additional_claims={"role": user.role}
+        )
+
         return jsonify({
             "message": "User registered successfully",
+            "access_token": access_token,
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -79,13 +85,13 @@ def login():
         if not user or not check_password_hash(user.password, password):
             return jsonify({"error": "Invalid credentials"}), 401
 
-        token = create_access_token(
+        access_token = create_access_token(
             identity=user.id,
             additional_claims={"role": user.role}
         )
 
         return jsonify({
-            "token": token,
+            "access_token": access_token,
             "user": {
                 "id": user.id,
                 "email": user.email,
