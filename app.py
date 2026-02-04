@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 
 from auth import jwt
 from routes.auth import auth_bp
+from routes.charity_applications import charity_applications_bp
+from routes.admin import admin_bp
 
 load_dotenv()
 
@@ -23,6 +25,8 @@ jwt.init_app(app)
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix="/auth")
+app.register_blueprint(charity_applications_bp, url_prefix="/charity")
+app.register_blueprint(admin_bp, url_prefix="/admin")
 
 
 @app.route("/health", methods=["GET"])
