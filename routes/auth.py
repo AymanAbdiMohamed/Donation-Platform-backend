@@ -2,7 +2,7 @@
 Authentication routes blueprint.
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import SessionLocal
 from models import User
@@ -101,5 +101,29 @@ def login():
 
     except Exception:
         return jsonify({"error": "Login failed"}), 500
+    finally:
+        session.close()
+
+
+@auth_bp.route("/me", methods=["GET"])
+@jwt_required()
+def get_current_user():
+    """Get current authenticated user."""
+    user_id = get_jwt_identity()
+    
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter_by(id=user_id).first()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        return jsonify({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+        }), 200
     finally:
         session.close()
