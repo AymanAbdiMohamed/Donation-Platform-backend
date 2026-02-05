@@ -366,7 +366,9 @@ class CharityService:
         
         Args:
             charity_id: Charity ID
-            **kwargs: Fields to update (name, description)
+            **kwargs: Fields to update (name, description, logo_path, category, 
+                      location, contact_email, contact_phone, website, address, 
+                      mission, goals)
             
         Returns:
             Charity: Updated charity or None
@@ -375,7 +377,19 @@ class CharityService:
         if not charity:
             return None
         
-        allowed_fields = ('name', 'description')
+        allowed_fields = (
+            'name', 
+            'description', 
+            'logo_path', 
+            'category', 
+            'location', 
+            'contact_email', 
+            'contact_phone', 
+            'website', 
+            'address',
+            'mission',
+            'goals'
+        )
         for key, value in kwargs.items():
             if key in allowed_fields:
                 setattr(charity, key, value)
