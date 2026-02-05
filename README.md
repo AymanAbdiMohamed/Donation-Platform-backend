@@ -1,6 +1,15 @@
-# Donation Platform - Backend
+# SheNeeds - Donation Platform Backend
 
-Flask REST API for the Donation Platform.
+Flask REST API for the SheNeeds Donation Platform - connecting donors with verified charities focused on menstrual health education and access.
+
+## Tech Stack
+
+- **Flask 3.0** - Web framework
+- **Flask-SQLAlchemy** - ORM
+- **Flask-JWT-Extended** - JWT authentication
+- **Flask-CORS** - Cross-origin support
+- **Flask-Migrate** - Database migrations
+- **SQLite/PostgreSQL** - Database
 
 ## Architecture
 
@@ -39,7 +48,7 @@ app/
     └── helpers.py
 ```
 
-## Setup
+## Quick Start
 
 ```bash
 cd Donation-Platform-backend
@@ -47,15 +56,15 @@ cd Donation-Platform-backend
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate    # Windows
+# venv\Scripts\activate   # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy env file and configure
-cp .env.example .env
+# Initialize database (creates tables)
+python -c "from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all()"
 
-# Seed the database (optional)
+# Seed with test data (optional)
 python seed_db.py
 
 # Run the server
@@ -73,7 +82,7 @@ Environment variables (set in `.env`):
 | `SECRET_KEY` | Flask secret key | dev-secret-key |
 | `JWT_SECRET_KEY` | JWT signing key | jwt-secret-key |
 | `JWT_EXPIRES_HOURS` | Token expiration | 24 |
-| `FLASK_ENV` | Environment (development/production) | development |
+| `FLASK_ENV` | Environment | development |
 | `DATABASE_URL` | Full database URL | SQLite |
 | `POSTGRES_HOST` | PostgreSQL host | - |
 | `POSTGRES_USER` | PostgreSQL user | - |
@@ -139,35 +148,62 @@ Tokens are obtained via `/auth/login` or `/auth/register`.
 - **charity** - Can manage charity profile and view donations
 - **admin** - Full platform management access
 
-## Models
+## Test Credentials
 
-### User
-- `id`, `username`, `email`, `password_hash`, `role`, `is_active`, `created_at`
+After seeding with `python seed_db.py`:
 
-### Charity
-- `id`, `name`, `description`, `user_id`, `is_active`, `created_at`
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@test.com` | `admin123` |
+| Donor | `donor@test.com` | `donor123` |
+| Charity | `charity@test.com` | `charity123` |
 
-### CharityApplication
-- `id`, `user_id`, `name`, `description`, `status`, `rejection_reason`, `created_at`, `reviewed_at`
+## Dependencies
 
-### Donation
-- `id`, `amount` (cents), `donor_id`, `charity_id`, `is_anonymous`, `is_recurring`, `message`, `created_at`
-
-## Development
-
-### Test Credentials (after seeding)
-- Admin: `admin@test.com` / `admin123`
-- Donor: `donor@test.com` / `donor123`
-- Charity: `charity@test.com` / `charity123`
-
-### Dependencies
 - Flask 3.0.0
 - Flask-SQLAlchemy (ORM)
 - Flask-JWT-Extended (Auth)
-- Flask-CORS (CORS)
+- Flask-CORS (Cross-origin)
 - Flask-Migrate (Migrations)
 - python-dotenv (Env vars)
 - Werkzeug (Password hashing)
+
+## Development
+
+### Running with Frontend
+
+1. Start the backend:
+   ```bash
+   cd Donation-Platform-backend
+   python run_app.py
+   ```
+
+2. Start the frontend (in another terminal):
+   ```bash
+   cd Donation-Platform-frontend
+   npm run dev
+   ```
+
+3. Access the app at `http://localhost:5173`
+
+### Adding New Routes
+
+1. Create route file in `app/routes/`
+2. Register blueprint in `app/routes/__init__.py`
+3. Add service methods in `app/services/` if needed
+
+### Database Migrations
+
+```bash
+# Initialize migrations (first time)
+flask db init
+
+# Create migration
+flask db migrate -m "Description"
+
+# Apply migration
+flask db upgrade
+```
 
 ## License
 
