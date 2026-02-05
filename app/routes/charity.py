@@ -1,4 +1,4 @@
-here """
+"""
 Charity Routes.
 
 Routes for charity users to manage their profile, applications, and view donations.
@@ -378,9 +378,21 @@ def update_profile():
     Headers:
         Authorization: Bearer <access_token>
         
-    Request Body:
+    Request Body (JSON):
         name: New charity name (optional)
         description: New description (optional)
+        category: Charity category (optional)
+        location: Location/address (optional)
+        contact_email: Contact email (optional)
+        contact_phone: Contact phone (optional)
+        website: Website URL (optional)
+        address: Physical address (optional)
+        mission: Mission statement (optional)
+        goals: Goals/objectives (optional)
+        
+    Multipart Form Data:
+        logo: Logo image file (optional)
+        *: Any JSON fields listed above
         
     Returns:
         200: Profile updated successfully
@@ -393,16 +405,54 @@ def update_profile():
     if not charity:
         return not_found("Charity not found")
     
-    data = request.get_json()
+    # Handle multipart form data (logo upload)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        data = request.form
+        files = request.files
+    else:
+        data = request.get_json()
+        files = None
+    
     if not data:
         return bad_request("Request body is required")
     
     # Build update kwargs
     updates = {}
-    if "name" in data and data["name"].strip():
-        updates["name"] = data["name"].strip()
-    if "description" in data:
-        updates["description"] = data["description"].strip()
+    
+    # Text fields
+    text_fields = [
+        'name', 'description', 'category', 'location', 
+        'contact_email', 'contact_phone', 'website', 'address',
+        'mission', 'goals'
+    ]
+    
+    for field in text_fields:
+        if field in data and data[field] is not None:
+            value = data[field]
+            if isinstance(value, str):
+                value = value.strip()
+            if field in ('name', 'description') and not value:
+                continue  # Skip empty name/description
+            updates[field] = value
+    
+    # Handle logo upload
+    if files and 'logo' in files:
+        logo_file = files['logo']
+        if logo_file and logo_file.filename:
+            # Generate storage path for logo
+            storage_path = generate_storage_path(
+                file_type="logos",
+                user_id=user_id,
+                filename=logo_file.filename
+            )
+            
+            # Save file
+            success, result = save_uploaded_file(logo_file, storage_path)
+            
+            if success:
+                updates['logo_path'] = result['path']
+            else:
+                return bad_request(f"Logo upload failed: {result}")
     
     if not updates:
         return bad_request("No valid fields to update")
