@@ -29,6 +29,10 @@ def apply():
     Request Body:
         name: Charity name (required)
         description: Charity description (optional)
+        contact_email: Contact email (optional)
+        contact_phone: Contact phone (optional)
+        registration_number: Registration number (optional)
+        country: Country of operation (optional)
         
     Returns:
         201: Application submitted successfully
@@ -43,6 +47,10 @@ def apply():
     
     name = data.get("name", "").strip()
     description = data.get("description", "").strip()
+    contact_email = data.get("contact_email", "").strip() or None
+    contact_phone = data.get("contact_phone", "").strip() or None
+    registration_number = data.get("registration_number", "").strip() or None
+    country = data.get("country", "").strip() or None
     
     if not name:
         return bad_request("Charity name is required")
@@ -51,7 +59,11 @@ def apply():
         application = CharityService.create_application(
             user_id=user_id,
             name=name,
-            description=description
+            description=description,
+            contact_email=contact_email,
+            contact_phone=contact_phone,
+            registration_number=registration_number,
+            country=country
         )
         
         return jsonify({

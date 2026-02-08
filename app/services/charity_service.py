@@ -15,7 +15,8 @@ class CharityService:
     # ==================
     
     @staticmethod
-    def create_application(user_id, name, description=""):
+    def create_application(user_id, name, description="", contact_email=None, contact_phone=None, 
+                          registration_number=None, country=None):
         """
         Create a new charity application.
         
@@ -23,6 +24,10 @@ class CharityService:
             user_id: Applicant's user ID
             name: Charity name
             description: Charity description
+            contact_email: Contact email
+            contact_phone: Contact phone
+            registration_number: Registration number
+            country: Country of operation
             
         Returns:
             CharityApplication: Created application
@@ -47,7 +52,11 @@ class CharityService:
         application = CharityApplication(
             user_id=user_id,
             name=name,
-            description=description
+            description=description,
+            contact_email=contact_email,
+            contact_phone=contact_phone,
+            registration_number=registration_number,
+            country=country
         )
         
         db.session.add(application)
