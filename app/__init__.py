@@ -56,8 +56,10 @@ def _register_blueprints(app):
     """Register all application blueprints."""
     from app.routes import auth_bp, donor_bp, charity_bp, admin_bp
     from app.routes.health import health_bp
+    from app.routes.public import public_bp
     
     app.register_blueprint(health_bp)
+    app.register_blueprint(public_bp)  # No prefix - public routes
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(donor_bp, url_prefix="/donor")
     app.register_blueprint(charity_bp, url_prefix="/charity")
