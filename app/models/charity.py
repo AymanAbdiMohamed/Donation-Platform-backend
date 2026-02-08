@@ -30,6 +30,10 @@ class CharityApplication(db.Model):
     )
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    contact_email = db.Column(db.String(120), nullable=True)
+    contact_phone = db.Column(db.String(50), nullable=True)
+    registration_number = db.Column(db.String(100), nullable=True)
+    country = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), default="pending", index=True)
     rejection_reason = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -68,6 +72,10 @@ class CharityApplication(db.Model):
             "user_id": self.user_id,
             "name": self.name,
             "description": self.description,
+            "contact_email": self.contact_email,
+            "contact_phone": self.contact_phone,
+            "registration_number": self.registration_number,
+            "country": self.country,
             "status": self.status,
             "rejection_reason": self.rejection_reason,
             "created_at": self.created_at.isoformat() if self.created_at else None,

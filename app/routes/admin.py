@@ -304,17 +304,19 @@ def get_stats():
     total_charities = Charity.query.filter_by(is_active=True).count()
     total_donations = DonationService.get_total_donations_amount()
     donation_count = DonationService.get_total_donation_count()
-    pending_applications = CharityApplication.query.filter_by(status="pending").count()
+    pending_count = CharityApplication.query.filter_by(status="pending").count()
+    approved_count = CharityApplication.query.filter_by(status="approved").count()
+    rejected_count = CharityApplication.query.filter_by(status="rejected").count()
     
     return jsonify({
-        "stats": {
-            "total_users": total_users,
-            "total_donors": total_donors,
-            "total_charity_users": total_charity_users,
-            "total_charities": total_charities,
-            "total_donations": total_donations,
-            "total_donations_dollars": total_donations / 100,
-            "donation_count": donation_count,
-            "pending_applications": pending_applications
-        }
+        "total_users": total_users,
+        "total_donors": total_donors,
+        "total_charity_users": total_charity_users,
+        "total_charities": total_charities,
+        "total_donations": total_donations,
+        "total_donations_dollars": total_donations / 100,
+        "donation_count": donation_count,
+        "pending_count": pending_count,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count
     }), 200
