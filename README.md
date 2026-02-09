@@ -2,6 +2,21 @@
 
 Flask REST API for the SheNeeds Donation Platform - connecting donors with verified charities focused on menstrual health education and access.
 
+## 📖 About
+
+SheNeeds is a donation platform designed to bridge the gap between generous donors and verified charitable organizations working to improve menstrual health education and access. The backend provides a robust REST API with role-based access control, secure authentication, and comprehensive donation management.
+
+### Key Features
+
+- 🔐 **JWT Authentication** - Secure user authentication with role-based access control
+- 👥 **Multi-Role System** - Support for donors, charities, and administrators
+- 🏢 **Charity Verification** - Application and approval process for charities
+- 💰 **Donation Management** - Track and manage donations with detailed records
+- 📊 **Dashboard Analytics** - Real-time statistics for charities and administrators
+- 🛡️ **Error Handling** - Comprehensive error handling with standardized responses
+- 🗄️ **Database Migrations** - Flask-Migrate for version-controlled database schema
+- 📝 **API Documentation** - Well-documented REST endpoints
+
 ## Tech Stack
 
 - **Flask 3.0** - Web framework
@@ -205,6 +220,64 @@ flask db migrate -m "Description"
 flask db upgrade
 ```
 
+## Troubleshooting
+
+### Common Issues
+
+**Database not initialized**
+```bash
+# Delete existing database and recreate
+rm instance/app.db
+python -c "from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all()"
+```
+
+**JWT token errors**
+- Ensure `JWT_SECRET_KEY` is set in your environment
+- Check token expiration time
+- Verify token is included in Authorization header
+
+**CORS issues**
+- Check that `FLASK_CORS_ORIGINS` includes your frontend URL
+- Default allows `http://localhost:5173`
+
+**Import errors**
+- Ensure virtual environment is activated
+- Reinstall dependencies: `pip install -r requirements.txt`
+
+## Deployment
+
+### Production Checklist
+
+- [ ] Set strong `SECRET_KEY` and `JWT_SECRET_KEY`
+- [ ] Use PostgreSQL instead of SQLite
+- [ ] Set `FLASK_ENV=production`
+- [ ] Configure proper CORS origins
+- [ ] Enable HTTPS
+- [ ] Set up proper logging
+- [ ] Use a production WSGI server (gunicorn, uWSGI)
+
+### Example Production Deployment
+
+```bash
+# Install production server
+pip install gunicorn
+
+# Run with gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 run_app:app
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
 ## License
 
 MIT
+
+---
+
+Built with ❤️ for menstrual health advocacy
