@@ -92,6 +92,32 @@ def get_donations():
     return jsonify({"donations": [d.to_dict() for d in donations]}), 200
 
 
+@donor_bp.route("/stats", methods=["GET"])
+@role_required("donor")
+def get_stats():
+    """Get donor statistics."""
+    user_id = int(get_jwt_identity())
+    stats = DonationService.get_donor_stats(user_id)
+    return jsonify(stats), 200
+
+
+@donor_bp.route("/favorites", methods=["GET"])
+@role_required("donor")
+def get_favorites():
+    """Get donor's favorite charities (Placeholder)."""
+    # Favorites model not implemented yet
+    return jsonify({"favorites": []}), 200
+
+
+@donor_bp.route("/recurring", methods=["GET"])
+@role_required("donor")
+def get_recurring():
+    """Get donor's recurring donations."""
+    user_id = int(get_jwt_identity())
+    recurring = DonationService.get_recurring_donations(user_id)
+    return jsonify({"recurring": [d.to_dict() for d in recurring]}), 200
+
+
 @donor_bp.route("/dashboard", methods=["GET"])
 @role_required("donor")
 def dashboard():
