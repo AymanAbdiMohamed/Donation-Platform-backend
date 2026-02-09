@@ -26,55 +26,80 @@ charity_bp = Blueprint("charity", __name__)
 @role_required("charity")
 def apply():
     """
-    Create or update a charity application draft (Step 1).
-
-    Request Body:
-        name: Charity name (required)
-        description: Charity description (optional)
-        step: Current step (optional)
+    Unified charity application submission.
+    Handles multipart/form-data and auto-approves for immediate display.
     """
     user_id = int(get_jwt_identity())
-    data = request.get_json()
+    
+    # Use form data instead of JSON
+    data = request.form
+    files = request.files
 
     if not data:
-        return bad_request("Request body is required")
+        return bad_request("Request data is required")
 
-    name = data.get("name", "").strip()
-    description = data.get("description", "").strip()
-    step = data.get("step", 1)
-
+    name = data.get("charityName") or data.get("name")
     if not name:
         return bad_request("Charity name is required")
 
     try:
-        application = CharityService.get_latest_application(user_id)
-
-        if application and application.status == "draft":
-            application = CharityService.save_application_step(
-                user_id=user_id,
-                step_data={
-                    "name": name,
-                    "description": description
-                }
-            )
-            if 1 <= step <= application.TOTAL_STEPS:
-                application.step = step
-                db.session.commit()
-
-            return jsonify({
-                "message": "Application draft updated successfully",
-                "application": application.to_dict()
-            }), 200
-
+        # 1. Create Application
         application = CharityService.create_application(
             user_id=user_id,
             name=name,
-            description=description
+            description=data.get("missionStatement") or data.get("description", "")
         )
 
+        # 2. Map other fields
+        step_data = {
+            "registration_number": data.get("registrationNumber"),
+            "country": data.get("countryOfOperation"),
+            "contact_email": data.get("emailAddress"),
+            "contact_phone": data.get("phoneNumber"),
+            "mission": data.get("missionStatement"),
+            "location": data.get("regionServed"),
+            "category": "health", # Default for this platform
+        }
+        
+        # Save additional context in goals or description if needed
+        goals = []
+        if data.get("targetAgeGroup"): goals.append(f"Target: {data.get('targetAgeGroup')}")
+        if data.get("menstrualHealthProgramme"): goals.append(f"Programme: {data.get('menstrualHealthProgramme')}")
+        if data.get("girlsReachedLastYear"): goals.append(f"Reach: {data.get('girlsReachedLastYear')} girls/year")
+        if goals:
+            step_data["goals"] = " | ".join(goals)
+
+        CharityService.save_application_step(user_id, step_data)
+
+        # 3. Handle Optional Files
+        for file_key in ["photos", "evidenceFile"]:
+            if file_key in files:
+                file = files[file_key]
+                if file and file.filename:
+                    storage_path = generate_storage_path(
+                        file_type="documents",
+                        user_id=user_id,
+                        filename=file.filename
+                    )
+                    success, result = save_uploaded_file(file, storage_path)
+                    if success:
+                        CharityService.add_document(
+                            application_id=application.id,
+                            document_type="other", # Use valid type
+                            file_path=result["path"],
+                            original_filename=file.filename,
+                            file_size=result.get("size"),
+                            mime_type=file.content_type
+                        )
+
+        # 4. Submit and Auto-Approve
+        CharityService.submit_application(user_id)
+        app, charity = CharityService.approve_application(application.id)
+
         return jsonify({
-            "message": "Application draft created successfully",
-            "application": application.to_dict()
+            "message": "Charity application submitted and approved successfully",
+            "application": app.to_dict(),
+            "charity": charity.to_dict()
         }), 201
 
     except ValueError as e:
