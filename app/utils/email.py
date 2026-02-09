@@ -2,6 +2,10 @@
 Email Utility.
 
 Handles email sending functionality.
+
+TODO: EmailService credentials (SMTP_USER, SMTP_PASSWORD, FROM_EMAIL) are not
+configured. Emails currently run in mock mode (printed to console). To enable
+real delivery, call EmailService.configure() at app startup or load from env vars.
 """
 import smtplib
 from email.mime.text import MIMEText
@@ -82,6 +86,9 @@ def send_email(to_email, subject, body, html_body=None, from_email=None):
         return False
 
 
+# TODO: send_donation_receipt is unused — ReceiptService.send_receipt_email()
+# handles receipt formatting and delivery. Remove this function once confirmed
+# that no future consumer needs it, or refactor ReceiptService to call it.
 def send_donation_receipt(donor_email, receipt):
     """
     Send donation receipt email.
