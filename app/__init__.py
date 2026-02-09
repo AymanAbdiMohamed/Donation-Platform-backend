@@ -62,6 +62,10 @@ def create_app(config_class=Config):
     # Create database tables
     with app.app_context():
         db.create_all()
+
+    # Validate M-Pesa configuration at startup (warn, don't crash)
+    with app.app_context():
+        config_class.validate_mpesa()
     
     return app
 
@@ -92,6 +96,7 @@ def _register_blueprints(app):
     from app.routes import auth_bp, donor_bp, charity_bp, admin_bp, payment_bp
     from app.routes.health import health_bp
     from app.routes.public import public_bp
+    from app.routes.donations_api import donations_api_bp
     
     app.register_blueprint(health_bp)
     app.register_blueprint(public_bp)  # No prefix - public routes
@@ -99,4 +104,5 @@ def _register_blueprints(app):
     app.register_blueprint(donor_bp, url_prefix="/donor")
     app.register_blueprint(charity_bp, url_prefix="/charity")
     app.register_blueprint(admin_bp, url_prefix="/admin")
-    app.register_blueprint(payment_bp, url_prefix="/payment")
+    app.register_blueprint(payment_bp, url_prefix="/api/mpesa")
+    app.register_blueprint(donations_api_bp, url_prefix="/api/donations")
