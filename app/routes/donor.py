@@ -104,3 +104,45 @@ def dashboard():
         "stats": stats,
         "recent_donations": [d.to_dict() for d in recent_donations]
     }), 200
+
+
+@donor_bp.route("/donations", methods=["POST"])
+@role_required("donor")
+def create_donation():
+    """Create a donation (simple flow without payment gateway)."""
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data:
+        return bad_request("Request body is required")
+
+    charity_id = data.get("charity_id")
+    amount = data.get("amount")  # Amount in cents
+
+    if not charity_id or amount is None:
+        return bad_request("charity_id and amount are required")
+
+    try:
+        amount_cents = int(amount)
+        if amount_cents <= 0:
+            return bad_request("Amount must be positive")
+    except (ValueError, TypeError):
+        return bad_request("Invalid amount")
+
+    charity = CharityService.get_charity(charity_id)
+    if not charity or not charity.is_active:
+        return not_found("Charity not found or inactive")
+
+    donation = DonationService.create_donation(
+        donor_id=user_id,
+        charity_id=charity_id,
+        amount_cents=amount_cents,
+        is_anonymous=data.get("is_anonymous", False),
+        is_recurring=data.get("is_recurring", False),
+        message=data.get("message")
+    )
+
+    return jsonify({
+        "message": "Donation created successfully",
+        "donation": donation.to_dict()
+    }), 201

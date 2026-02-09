@@ -193,3 +193,34 @@ class DonationService:
     def get_total_donation_count():
         """Get total number of donations on the platform."""
         return Donation.query.count()
+
+    @staticmethod
+    def create_donation(donor_id, charity_id, amount_cents, is_anonymous=False,
+                        is_recurring=False, message=None):
+        """
+        Create a donation record directly (simple flow without payment gateway).
+
+        Args:
+            donor_id: ID of the donor
+            charity_id: ID of the charity
+            amount_cents: Donation amount in cents
+            is_anonymous: Whether to hide donor identity
+            is_recurring: Whether this is a recurring donation
+            message: Optional message to charity
+
+        Returns:
+            Donation: Created donation
+        """
+        donation = Donation(
+            amount=amount_cents,
+            donor_id=donor_id,
+            charity_id=charity_id,
+            is_anonymous=is_anonymous,
+            is_recurring=is_recurring,
+            message=message
+        )
+
+        db.session.add(donation)
+        db.session.commit()
+
+        return donation
