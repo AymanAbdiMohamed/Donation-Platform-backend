@@ -24,7 +24,14 @@ def create_app(config_class=Config):
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
+    # Validate secrets are not defaults in production
+    if not app.config.get('DEBUG') and not app.config.get('TESTING'):
+        if app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
+            raise RuntimeError("SECRET_KEY must be set via environment variable in production")
+        if app.config['JWT_SECRET_KEY'] == 'jwt-secret-key-change-in-production':
+            raise RuntimeError("JWT_SECRET_KEY must be set via environment variable in production")
+
     # Initialize extensions
     _init_extensions(app)
     
