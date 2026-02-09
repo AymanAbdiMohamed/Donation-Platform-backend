@@ -55,7 +55,7 @@ def _init_extensions(app):
     """Initialize Flask extensions."""
     db.init_app(app)
     jwt.init_app(app)
-    cors.init_app(app)
+    cors.init_app(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
     migrate.init_app(app, db)
 
 

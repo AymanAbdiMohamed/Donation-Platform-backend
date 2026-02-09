@@ -307,7 +307,7 @@ def get_stats():
     total_charities = Charity.query.filter_by(is_active=True).count()
     total_donations = DonationService.get_total_donations_amount()
     donation_count = DonationService.get_total_donation_count()
-    pending_count = CharityApplication.query.filter_by(status="pending").count()
+    pending_count = CharityApplication.query.filter_by(status="submitted").count()
     approved_count = CharityApplication.query.filter_by(status="approved").count()
     rejected_count = CharityApplication.query.filter_by(status="rejected").count()
     
