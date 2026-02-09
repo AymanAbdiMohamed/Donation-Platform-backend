@@ -65,7 +65,8 @@ def get_applications():
         200: List of applications
     """
     status = request.args.get("status")
-    # Map "pending" to "submitted" — frontend uses "pending" for admin-facing queries
+    # Frontend sends ?status=pending but the model stores "submitted".
+    # See CharityApplication.VALID_STATUSES for canonical values.
     if status == "pending":
         status = "submitted"
     applications = CharityService.get_applications_by_status(status)

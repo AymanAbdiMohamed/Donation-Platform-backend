@@ -41,6 +41,8 @@ def apply():
     name = data.get("charityName") or data.get("name")
     if not name:
         return bad_request("Charity name is required")
+    if len(name) > 200:
+        return bad_request("Charity name must be 200 characters or fewer")
 
     try:
         # 1. Create Application
