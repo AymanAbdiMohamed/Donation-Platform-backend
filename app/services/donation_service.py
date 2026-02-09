@@ -175,10 +175,10 @@ class DonationService:
         ).filter(Donation.donor_id == donor_id).scalar() or 0
         
         return {
-            "total_donated": total_donated,
-            "total_donated_dollars": total_donated / 100,
+            "total_donated": total_donated / 100,  # Return dollars for frontend
             "donation_count": donation_count,
-            "charities_supported": unique_charities
+            "charities_supported": unique_charities,
+            "active_recurring": Donation.query.filter_by(donor_id=donor_id, is_recurring=True).count()
         }
     
     @staticmethod
@@ -193,3 +193,8 @@ class DonationService:
     def get_total_donation_count():
         """Get total number of donations on the platform."""
         return Donation.query.count()
+
+    @staticmethod
+    def get_recurring_donations(donor_id):
+        """Get recurring donations for a donor."""
+        return Donation.query.filter_by(donor_id=donor_id, is_recurring=True).all()

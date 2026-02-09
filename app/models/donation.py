@@ -89,6 +89,7 @@ class Donation(db.Model):
             "amount": self.amount,
             "amount_dollars": self.amount_dollars,
             "charity_id": self.charity_id,
+            "charity_name": self.charity.name if self.charity else "Unknown",
             "is_anonymous": self.is_anonymous,
             "is_recurring": self.is_recurring,
             "message": self.message,
