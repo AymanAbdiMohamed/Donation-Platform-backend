@@ -76,6 +76,8 @@ class CharityApplication(db.Model):
     )
 
     VALID_STATUSES = ("draft", "submitted", "approved", "rejected")
+    """Canonical application status values. 'submitted' is displayed as
+    'pending' in the admin UI (see admin routes for the mapping)."""
     TOTAL_STEPS = 4
 
     def approve(self):
@@ -112,6 +114,7 @@ class CharityApplication(db.Model):
         return self.status == "submitted"
 
     def is_pending(self):
+        """Alias for is_submitted(). The admin UI calls this status 'pending'."""
         return self.status == "submitted"
 
     def can_edit(self):

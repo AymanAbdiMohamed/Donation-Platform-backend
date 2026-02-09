@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import get_jwt_identity
 
 from app.auth import role_required
-from app.services import CharityService, DonationService
+from app.services import CharityService, DonationService, ReceiptService, PaymentService
 from app.errors import bad_request, not_found
 
 donor_bp = Blueprint("donor", __name__)
@@ -61,6 +61,12 @@ def make_donation():
     if not charity or not charity.is_active:
         return not_found("Charity not found or inactive")
     
+    if not PaymentService.is_configured():
+        return bad_request(
+            "M-Pesa payments are not configured. "
+            "Set MPESA_* environment variables or use POST /donor/donations for the simple flow."
+        )
+
     try:
         result = DonationService.initiate_donation(
             donor_id=user_id,
@@ -70,6 +76,13 @@ def make_donation():
             is_anonymous=data.get("is_anonymous", False),
             is_recurring=data.get("is_recurring", False),
             message=data.get("message", "").strip()
+        )
+
+        # Store pending donation data so the callback route can create the record
+        from app.routes.payment import store_pending_donation
+        store_pending_donation(
+            result["checkout_request_id"],
+            result["pending_donation"]
         )
         
         return jsonify({
@@ -133,16 +146,60 @@ def create_donation():
     if not charity or not charity.is_active:
         return not_found("Charity not found or inactive")
 
+    message = data.get("message")
+    if message and len(message) > 500:
+        return bad_request("Message must be 500 characters or fewer")
+    
     donation = DonationService.create_donation(
         donor_id=user_id,
         charity_id=charity_id,
         amount_cents=amount_cents,
         is_anonymous=data.get("is_anonymous", False),
         is_recurring=data.get("is_recurring", False),
-        message=data.get("message")
+        message=message
     )
 
     return jsonify({
         "message": "Donation created successfully",
         "donation": donation.to_dict()
     }), 201
+
+
+@donor_bp.route("/donations/<int:donation_id>/receipt", methods=["GET"])
+@role_required("donor")
+def get_donation_receipt(donation_id):
+    """Get receipt for a specific donation (must belong to the requesting donor)."""
+    user_id = int(get_jwt_identity())
+
+    donation = DonationService.get_donation(donation_id)
+    if not donation:
+        return not_found("Donation not found")
+
+    if donation.donor_id != user_id:
+        return not_found("Donation not found")
+
+    try:
+        receipt = ReceiptService.generate_receipt(donation_id)
+        return jsonify({"receipt": receipt}), 200
+    except ValueError as e:
+        return not_found(str(e))
+
+
+@donor_bp.route("/donations/<int:donation_id>/receipt/email", methods=["POST"])
+@role_required("donor")
+def email_donation_receipt(donation_id):
+    """Email receipt for a specific donation to the donor."""
+    user_id = int(get_jwt_identity())
+
+    donation = DonationService.get_donation(donation_id)
+    if not donation:
+        return not_found("Donation not found")
+
+    if donation.donor_id != user_id:
+        return not_found("Donation not found")
+
+    try:
+        ReceiptService.send_receipt_email(donation_id)
+        return jsonify({"message": "Receipt sent to your email"}), 200
+    except ValueError as e:
+        return not_found(str(e))

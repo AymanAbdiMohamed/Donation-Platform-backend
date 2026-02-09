@@ -169,11 +169,8 @@ def get_absolute_upload_path(relative_path):
     if os.path.isabs(base_path):
         return os.path.join(base_path, relative_path)
     
-    # Otherwise join with app root
-    from app import create_app
-    app = create_app()
-    with app.app_context():
-        return os.path.join(app.root_path, '..', base_path, relative_path)
+    # Join with the app root directory (no circular import)
+    return os.path.join(current_app.root_path, '..', base_path, relative_path)
 
 
 def ensure_upload_directory(path):
