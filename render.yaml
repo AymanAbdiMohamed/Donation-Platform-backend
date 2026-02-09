@@ -1,0 +1,52 @@
+# render.yaml — Render Blueprint (Infrastructure as Code)
+# Deploy: https://render.com/deploy → connect your repo → Render reads this file
+#
+# After deploy, fill in the environment variable values in the Render dashboard.
+
+databases:
+  - name: donation-platform-db
+    plan: free  # or starter / standard for production
+    databaseName: donation_platform
+    user: donation_user
+
+services:
+  - type: web
+    name: donation-platform-api
+    runtime: python
+    plan: free  # or starter for always-on
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run_app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      # Flask
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true       # Render generates a random 256-bit secret
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+      # Database — auto-linked from the database above
+      - key: DATABASE_URL
+        fromDatabase:
+          name: donation-platform-db
+          property: connectionString
+
+      # CORS — set to your frontend URL (no trailing slash)
+      - key: CORS_ORIGINS
+        sync: false               # you fill this in the dashboard
+
+      # M-Pesa Daraja — fill these in the Render dashboard
+      - key: MPESA_ENV
+        value: sandbox
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_SHORTCODE
+        value: "174379"
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_STK_CALLBACK_URL
+        sync: false               # https://<your-render-service>.onrender.com/api/mpesa/callback
+      - key: MPESA_TIMEOUT_URL
+        sync: false               # https://<your-render-service>.onrender.com/api/mpesa/timeout

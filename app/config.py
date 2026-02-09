@@ -14,7 +14,19 @@ def _get_database_url():
     """
     Build database URL from environment variables.
     Falls back to SQLite for development.
+
+    Render (and Heroku) provide DATABASE_URL with the ``postgres://`` scheme,
+    but SQLAlchemy 1.4+ requires ``postgresql://``.  We fix that automatically.
     """
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        # Render / Heroku compat: postgres:// → postgresql+psycopg://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
+
     postgres_host = os.getenv("POSTGRES_HOST")
     postgres_user = os.getenv("POSTGRES_USER")
     postgres_password = os.getenv("POSTGRES_PASSWORD")
@@ -22,7 +34,7 @@ def _get_database_url():
     
     if all([postgres_host, postgres_user, postgres_password, postgres_db]):
         return (
-            f"postgresql://{postgres_user}:{postgres_password}"
+            f"postgresql+psycopg://{postgres_user}:{postgres_password}"
             f"@{postgres_host}/{postgres_db}"
         )
     
@@ -35,8 +47,8 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", _get_database_url())
+    # Database — _get_database_url() handles Render's postgres:// → postgresql://
+    SQLALCHEMY_DATABASE_URI = _get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
