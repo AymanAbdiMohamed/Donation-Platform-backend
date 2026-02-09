@@ -3,234 +3,281 @@ Payment Service.
 
 Handles M-Pesa Daraja API payment processing for donations.
 
-Required environment variables (all optional in dev — the service will report
-itself as unconfigured when any are missing):
-    MPESA_CONSUMER_KEY
-    MPESA_CONSUMER_SECRET
-    MPESA_SHORTCODE
-    MPESA_PASSKEY
-    MPESA_CALLBACK_URL
-    MPESA_ENVIRONMENT    – "sandbox" (default) or "production"
+All credentials are read from Flask app.config (populated from environment
+variables via config.py).  The service never reads os.environ directly.
+
+Token caching: The OAuth access token is cached in-memory with its expiry
+time and refreshed automatically when it expires.
 """
-import os
-import requests
+import time
 import base64
+import logging
 from datetime import datetime
+
+import requests
 from requests.auth import HTTPBasicAuth
+from flask import current_app
+
+logger = logging.getLogger(__name__)
+
+# ── In-memory token cache ───────────────────────────────────────────────────
+_token_cache = {
+    "access_token": None,
+    "expires_at": 0,  # epoch seconds
+}
+
+# ── Daraja API base URLs ────────────────────────────────────────────────────
+_SANDBOX_BASE = "https://sandbox.safaricom.co.ke"
+_PRODUCTION_BASE = "https://api.safaricom.co.ke"
+
+
+def _base_url():
+    """Return the correct API base URL based on MPESA_ENV."""
+    env = current_app.config.get("MPESA_ENV", "sandbox")
+    return _PRODUCTION_BASE if env == "production" else _SANDBOX_BASE
 
 
 class PaymentService:
     """Service class for M-Pesa Daraja payment processing."""
 
-    # ── Credentials from environment variables ──────────────────────
-    CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
-    CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
-    BUSINESS_SHORT_CODE = os.environ.get("MPESA_SHORTCODE", "")
-    PASSKEY = os.environ.get("MPESA_PASSKEY", "")
-    CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
+    # ── Configuration helpers (read from Flask config at runtime) ────────
 
-    # ── API URLs ────────────────────────────────────────────────────
-    _SANDBOX_AUTH = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    _SANDBOX_STK = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-    _PROD_AUTH = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    _PROD_STK = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-
-    @classmethod
-    def _is_production(cls):
-        return os.environ.get("MPESA_ENVIRONMENT", "sandbox").lower() == "production"
-
-    @classmethod
-    def _auth_url(cls):
-        return cls._PROD_AUTH if cls._is_production() else cls._SANDBOX_AUTH
-
-    @classmethod
-    def _stk_url(cls):
-        return cls._PROD_STK if cls._is_production() else cls._SANDBOX_STK
-
-    @classmethod
-    def is_configured(cls):
-        """Return True if all required M-Pesa credentials are set."""
-        return all([
-            cls.CONSUMER_KEY,
-            cls.CONSUMER_SECRET,
-            cls.BUSINESS_SHORT_CODE,
-            cls.PASSKEY,
-            cls.CALLBACK_URL,
-        ])
-    
     @staticmethod
-    def get_access_token():
+    def _cfg(key):
+        """Read an MPESA_* config value from the running Flask app."""
+        return current_app.config.get(key, "")
+
+    @staticmethod
+    def is_configured():
+        """Return True if all required M-Pesa credentials are present."""
+        required = [
+            "MPESA_CONSUMER_KEY",
+            "MPESA_CONSUMER_SECRET",
+            "MPESA_SHORTCODE",
+            "MPESA_PASSKEY",
+            "MPESA_STK_CALLBACK_URL",
+        ]
+        missing = [k for k in required if not current_app.config.get(k)]
+        if missing:
+            logger.warning("M-Pesa not configured — missing: %s", ", ".join(missing))
+            return False
+        return True
+
+    # ── OAuth Token ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def get_mpesa_access_token():
         """
-        Get M-Pesa access token.
-        
+        Get a valid M-Pesa OAuth access token.
+
+        Caches the token in-memory and automatically refreshes it 60 s
+        before the advertised expiry.
+
         Returns:
-            str: Access token or None if failed
+            str: Bearer access token.
+
+        Raises:
+            RuntimeError: If the token request fails.
         """
-        if not PaymentService.is_configured():
-            print("M-Pesa is not configured — set MPESA_* environment variables")
-            return None
+        now = time.time()
+
+        # Return cached token if still valid (with 60 s buffer)
+        if _token_cache["access_token"] and _token_cache["expires_at"] - 60 > now:
+            return _token_cache["access_token"]
+
+        consumer_key = PaymentService._cfg("MPESA_CONSUMER_KEY")
+        consumer_secret = PaymentService._cfg("MPESA_CONSUMER_SECRET")
+
+        if not consumer_key or not consumer_secret:
+            raise RuntimeError(
+                "MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET must be set"
+            )
+
+        url = f"{_base_url()}/oauth/v1/generate?grant_type=client_credentials"
 
         try:
-            response = requests.get(
-                PaymentService._auth_url(),
-                auth=HTTPBasicAuth(PaymentService.CONSUMER_KEY, PaymentService.CONSUMER_SECRET)
+            resp = requests.get(
+                url,
+                auth=HTTPBasicAuth(consumer_key, consumer_secret),
+                timeout=15,
             )
-            response.raise_for_status()
-            return response.json().get("access_token")
-        except Exception as e:
-            print(f"Error getting access token: {str(e)}")
-            return None
-    
+            resp.raise_for_status()
+            data = resp.json()
+        except requests.RequestException as exc:
+            logger.error("Daraja OAuth request failed: %s", exc)
+            raise RuntimeError(f"Failed to obtain M-Pesa access token: {exc}") from exc
+
+        token = data.get("access_token")
+        expires_in = int(data.get("expires_in", 3599))  # seconds
+
+        if not token:
+            raise RuntimeError("Daraja response did not contain an access_token")
+
+        _token_cache["access_token"] = token
+        _token_cache["expires_at"] = now + expires_in
+
+        logger.info("M-Pesa access token refreshed (expires in %d s)", expires_in)
+        return token
+
+    # ── Password / timestamp generation ─────────────────────────────────
+
     @staticmethod
     def generate_password():
         """
-        Generate M-Pesa password.
-        
+        Generate the STK Push password.
+
         Returns:
-            tuple: (password, timestamp)
+            tuple[str, str]: (base64-encoded password, timestamp)
         """
+        shortcode = PaymentService._cfg("MPESA_SHORTCODE")
+        passkey = PaymentService._cfg("MPESA_PASSKEY")
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        data_to_encode = f"{PaymentService.BUSINESS_SHORT_CODE}{PaymentService.PASSKEY}{timestamp}"
-        password = base64.b64encode(data_to_encode.encode()).decode("utf-8")
+        raw = f"{shortcode}{passkey}{timestamp}"
+        password = base64.b64encode(raw.encode()).decode("utf-8")
         return password, timestamp
-    
+
+    # ── STK Push ────────────────────────────────────────────────────────
+
     @staticmethod
-    def create_payment_intent(amount, phone_number, account_reference, transaction_desc):
+    def initiate_stk_push(amount, phone_number, account_reference, transaction_desc):
         """
-        Initiate M-Pesa STK Push payment.
-        
+        Initiate an M-Pesa STK Push (Lipa Na M-Pesa Online).
+
         Args:
-            amount: Payment amount in KES (will be converted to integer)
-            phone_number: Customer phone number (format: 254XXXXXXXXX)
-            account_reference: Account reference (e.g., donation ID)
-            transaction_desc: Transaction description
-            
+            amount: Amount in KES (integer).
+            phone_number: Customer phone in 254XXXXXXXXX format.
+            account_reference: e.g. charity name or "DONATION-<id>".
+            transaction_desc: Human-readable description.
+
         Returns:
-            dict: Payment intent result with checkout_request_id and response_code
+            dict with keys:
+                success (bool)
+                checkout_request_id (str)
+                merchant_request_id (str)
+                response_description (str)
+                customer_message (str)
+            On failure the dict has ``success=False`` and an ``error`` key.
         """
-        access_token = PaymentService.get_access_token()
-        if not access_token:
-            return {
-                "success": False,
-                "error": "Failed to get access token"
-            }
-        
+        if not PaymentService.is_configured():
+            return {"success": False, "error": "M-Pesa is not configured on this server"}
+
+        try:
+            access_token = PaymentService.get_mpesa_access_token()
+        except RuntimeError as exc:
+            return {"success": False, "error": str(exc)}
+
         password, timestamp = PaymentService.generate_password()
-        
-        # Ensure phone number is in correct format
+        shortcode = PaymentService._cfg("MPESA_SHORTCODE")
+        callback_url = PaymentService._cfg("MPESA_STK_CALLBACK_URL")
+
+        # Normalise phone number to 254XXXXXXXXX
+        phone_number = str(phone_number).strip()
         if phone_number.startswith("0"):
             phone_number = "254" + phone_number[1:]
         elif phone_number.startswith("+"):
             phone_number = phone_number[1:]
-        
+
         payload = {
-            "BusinessShortCode": PaymentService.BUSINESS_SHORT_CODE,
+            "BusinessShortCode": shortcode,
             "Password": password,
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": int(amount),
             "PartyA": phone_number,
-            "PartyB": PaymentService.BUSINESS_SHORT_CODE,
+            "PartyB": shortcode,
             "PhoneNumber": phone_number,
-            "CallBackURL": PaymentService.CALLBACK_URL,
-            "AccountReference": account_reference,
-            "TransactionDesc": transaction_desc
+            "CallBackURL": callback_url,
+            "AccountReference": str(account_reference)[:12],  # max 12 chars
+            "TransactionDesc": str(transaction_desc)[:13],    # max 13 chars
         }
-        
+
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-        
+
+        url = f"{_base_url()}/mpesa/stkpush/v1/processrequest"
+
         try:
-            response = requests.post(
-                PaymentService._stk_url(),
-                json=payload,
-                headers=headers,
-                timeout=30
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            if result.get("ResponseCode") == "0":
-                return {
-                    "success": True,
-                    "checkout_request_id": result.get("CheckoutRequestID"),
-                    "merchant_request_id": result.get("MerchantRequestID"),
-                    "response_code": result.get("ResponseCode"),
-                    "response_description": result.get("ResponseDescription"),
-                    "customer_message": result.get("CustomerMessage")
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": result.get("ResponseDescription", "Payment initiation failed")
-                }
-                
-        except Exception as e:
+            resp = requests.post(url, json=payload, headers=headers, timeout=30)
+            resp.raise_for_status()
+            result = resp.json()
+        except requests.RequestException as exc:
+            logger.error("STK Push request failed: %s", exc)
+            return {"success": False, "error": f"STK Push request failed: {exc}"}
+
+        if result.get("ResponseCode") == "0":
             return {
-                "success": False,
-                "error": f"Payment request failed: {str(e)}"
+                "success": True,
+                "checkout_request_id": result.get("CheckoutRequestID"),
+                "merchant_request_id": result.get("MerchantRequestID"),
+                "response_description": result.get("ResponseDescription", ""),
+                "customer_message": result.get("CustomerMessage", ""),
             }
-    
+
+        return {
+            "success": False,
+            "error": result.get("ResponseDescription")
+                     or result.get("errorMessage")
+                     or "STK Push initiation failed",
+        }
+
+    # ── Callback parsing ────────────────────────────────────────────────
+
     @staticmethod
-    def confirm_payment(callback_data):
+    def parse_stk_callback(callback_data):
         """
-        Process M-Pesa callback and confirm payment.
-        
-        Args:
-            callback_data: Callback data from M-Pesa
-            
+        Parse the M-Pesa STK callback payload.
+
         Returns:
-            dict: Confirmation result with transaction details
+            dict with keys:
+                success (bool)
+                checkout_request_id (str)
+                merchant_request_id (str)
+                result_code (int)
+                result_desc (str)
+                mpesa_receipt_number (str | None)  — only on success
+                amount (int | None)
+                phone_number (str | None)
+                transaction_date (str | None)
         """
         try:
             body = callback_data.get("Body", {}).get("stkCallback", {})
-            result_code = body.get("ResultCode")
-            
-            if result_code == 0:
-                # Payment successful
-                callback_metadata = body.get("CallbackMetadata", {}).get("Item", [])
-                
-                # Extract transaction details
-                transaction_details = {}
-                for item in callback_metadata:
-                    name = item.get("Name")
-                    value = item.get("Value")
-                    transaction_details[name] = value
-                
-                return {
-                    "success": True,
-                    "transaction_id": transaction_details.get("MpesaReceiptNumber"),
-                    "amount": transaction_details.get("Amount"),
-                    "phone_number": transaction_details.get("PhoneNumber"),
-                    "transaction_date": transaction_details.get("TransactionDate"),
-                    "checkout_request_id": body.get("CheckoutRequestID"),
-                    "merchant_request_id": body.get("MerchantRequestID")
-                }
-            else:
-                # Payment failed
-                return {
-                    "success": False,
-                    "error": body.get("ResultDesc", "Payment failed"),
-                    "result_code": result_code
-                }
-                
-        except Exception as e:
+        except (AttributeError, TypeError):
+            return {"success": False, "error": "Malformed callback payload"}
+
+        result_code = body.get("ResultCode")
+        checkout_id = body.get("CheckoutRequestID")
+        merchant_id = body.get("MerchantRequestID")
+        result_desc = body.get("ResultDesc", "")
+
+        base = {
+            "checkout_request_id": checkout_id,
+            "merchant_request_id": merchant_id,
+            "result_code": result_code,
+            "result_desc": result_desc,
+        }
+
+        if result_code == 0:
+            # Payment succeeded — extract metadata
+            items = body.get("CallbackMetadata", {}).get("Item", [])
+            meta = {}
+            for item in items:
+                meta[item.get("Name")] = item.get("Value")
+
             return {
-                "success": False,
-                "error": f"Error processing callback: {str(e)}"
+                **base,
+                "success": True,
+                "mpesa_receipt_number": meta.get("MpesaReceiptNumber"),
+                "amount": meta.get("Amount"),
+                "phone_number": str(meta.get("PhoneNumber", "")),
+                "transaction_date": str(meta.get("TransactionDate", "")),
             }
-    
-    @staticmethod
-    def get_transaction_reference(checkout_request_id):
-        """
-        Get transaction reference from checkout request ID.
-        
-        Args:
-            checkout_request_id: Checkout request ID from STK push
-            
-        Returns:
-            str: Transaction reference
-        """
-        return f"MPESA-{checkout_request_id}"
+
+        # Payment failed / cancelled
+        return {
+            **base,
+            "success": False,
+            "error": result_desc or "Payment was not completed",
+        }
+

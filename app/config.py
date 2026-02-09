@@ -58,6 +58,35 @@ class Config:
     RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per hour")
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
+    # ── M-Pesa Daraja ───────────────────────────────────────────────────────
+    MPESA_ENV = os.environ.get("MPESA_ENV", "sandbox")
+    MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
+    MPESA_CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
+    MPESA_SHORTCODE = os.environ.get("MPESA_SHORTCODE", "174379")
+    MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY", "")
+    MPESA_STK_CALLBACK_URL = os.environ.get("MPESA_STK_CALLBACK_URL", "")
+    MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL", "")
+
+    @staticmethod
+    def validate_mpesa():
+        """Check that all required M-Pesa vars are set. Call at startup."""
+        required = {
+            "MPESA_CONSUMER_KEY": os.environ.get("MPESA_CONSUMER_KEY", ""),
+            "MPESA_CONSUMER_SECRET": os.environ.get("MPESA_CONSUMER_SECRET", ""),
+            "MPESA_PASSKEY": os.environ.get("MPESA_PASSKEY", ""),
+            "MPESA_STK_CALLBACK_URL": os.environ.get("MPESA_STK_CALLBACK_URL", ""),
+        }
+        missing = [k for k, v in required.items() if not v]
+        if missing:
+            import logging
+            logging.getLogger(__name__).warning(
+                "M-Pesa NOT fully configured — missing: %s. "
+                "STK Push endpoints will return errors until these are set.",
+                ", ".join(missing),
+            )
+            return False
+        return True
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""
