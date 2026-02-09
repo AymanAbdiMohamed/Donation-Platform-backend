@@ -80,6 +80,45 @@ def make_donation():
         
     except ValueError as e:
         return bad_request(str(e))
+@donor_bp.route("/donations", methods=["POST"])
+@role_required("donor")
+def create_donation():
+    """Create a donation record directly."""
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    
+    if not data:
+        return bad_request("Request body is required")
+        
+    charity_id = data.get("charity_id")
+    amount = data.get("amount") # in dollars from frontend
+    
+    if not all([charity_id, amount]):
+        return bad_request("charity_id and amount are required")
+        
+    try:
+        # Convert amount to cents if service expects cents
+        # Based on Donation model and BrowseCharities.jsx comments
+        amount_cents = int(float(amount) * 100)
+        
+        donation = DonationService.create_donation_after_payment(
+            checkout_request_id=f"DIRECT-{user_id}",
+            donor_id=user_id,
+            charity_id=charity_id,
+            amount_cents=amount_cents,
+            transaction_id=f"TXN-{user_id}",
+            is_anonymous=data.get("is_anonymous", False),
+            is_recurring=data.get("is_recurring", False),
+            message=data.get("message", "").strip()
+        )
+        
+        return jsonify({
+            "message": "Donation recorded successfully",
+            "donation": donation.to_dict()
+        }), 201
+        
+    except ValueError as e:
+        return bad_request(str(e))
 
 
 @donor_bp.route("/donations", methods=["GET"])
