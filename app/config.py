@@ -50,6 +50,13 @@ class Config:
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "jwt-secret-key-change-in-production")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=int(os.environ.get("JWT_EXPIRES_HOURS", 24)))
     JWT_ERROR_MESSAGE_KEY = "error"
+    
+    # CORS — comma-separated origins, e.g. "https://example.com,https://www.example.com"
+    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
+    
+    # Rate limiting
+    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per hour")
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
 
 class DevelopmentConfig(Config):
@@ -67,6 +74,9 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
+    
+    # Enforce explicit CORS origins in production
+    # CORS_ORIGINS must be set via env var (no wildcard fallback)
 
 
 # Configuration mapping

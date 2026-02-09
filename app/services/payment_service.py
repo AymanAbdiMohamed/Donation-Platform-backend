@@ -2,7 +2,17 @@
 Payment Service.
 
 Handles M-Pesa Daraja API payment processing for donations.
+
+Required environment variables (all optional in dev — the service will report
+itself as unconfigured when any are missing):
+    MPESA_CONSUMER_KEY
+    MPESA_CONSUMER_SECRET
+    MPESA_SHORTCODE
+    MPESA_PASSKEY
+    MPESA_CALLBACK_URL
+    MPESA_ENVIRONMENT    – "sandbox" (default) or "production"
 """
+import os
 import requests
 import base64
 from datetime import datetime
@@ -11,26 +21,42 @@ from requests.auth import HTTPBasicAuth
 
 class PaymentService:
     """Service class for M-Pesa Daraja payment processing."""
-    
-    # ==========================================
-    # ADD YOUR M-PESA DARAJA CREDENTIALS HERE
-    # ==========================================
-    CONSUMER_KEY = "YOUR_CONSUMER_KEY_HERE"
-    CONSUMER_SECRET = "YOUR_CONSUMER_SECRET_HERE"
-    BUSINESS_SHORT_CODE = "YOUR_BUSINESS_SHORT_CODE_HERE"
-    PASSKEY = "YOUR_PASSKEY_HERE"
-    
-    # M-Pesa API URLs (Use sandbox for testing, production for live)
-    # Sandbox URLs
-    AUTH_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    STK_PUSH_URL = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-    
-    # Production URLs (uncomment when going live)
-    # AUTH_URL = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    # STK_PUSH_URL = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-    
-    CALLBACK_URL = "YOUR_CALLBACK_URL_HERE"  # e.g., "https://yourdomain.com/api/payment/callback"
-    # ==========================================
+
+    # ── Credentials from environment variables ──────────────────────
+    CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
+    CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
+    BUSINESS_SHORT_CODE = os.environ.get("MPESA_SHORTCODE", "")
+    PASSKEY = os.environ.get("MPESA_PASSKEY", "")
+    CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
+
+    # ── API URLs ────────────────────────────────────────────────────
+    _SANDBOX_AUTH = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    _SANDBOX_STK = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+    _PROD_AUTH = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    _PROD_STK = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+
+    @classmethod
+    def _is_production(cls):
+        return os.environ.get("MPESA_ENVIRONMENT", "sandbox").lower() == "production"
+
+    @classmethod
+    def _auth_url(cls):
+        return cls._PROD_AUTH if cls._is_production() else cls._SANDBOX_AUTH
+
+    @classmethod
+    def _stk_url(cls):
+        return cls._PROD_STK if cls._is_production() else cls._SANDBOX_STK
+
+    @classmethod
+    def is_configured(cls):
+        """Return True if all required M-Pesa credentials are set."""
+        return all([
+            cls.CONSUMER_KEY,
+            cls.CONSUMER_SECRET,
+            cls.BUSINESS_SHORT_CODE,
+            cls.PASSKEY,
+            cls.CALLBACK_URL,
+        ])
     
     @staticmethod
     def get_access_token():
@@ -40,9 +66,13 @@ class PaymentService:
         Returns:
             str: Access token or None if failed
         """
+        if not PaymentService.is_configured():
+            print("M-Pesa is not configured — set MPESA_* environment variables")
+            return None
+
         try:
             response = requests.get(
-                PaymentService.AUTH_URL,
+                PaymentService._auth_url(),
                 auth=HTTPBasicAuth(PaymentService.CONSUMER_KEY, PaymentService.CONSUMER_SECRET)
             )
             response.raise_for_status()
@@ -114,7 +144,7 @@ class PaymentService:
         
         try:
             response = requests.post(
-                PaymentService.STK_PUSH_URL,
+                PaymentService._stk_url(),
                 json=payload,
                 headers=headers,
                 timeout=30
