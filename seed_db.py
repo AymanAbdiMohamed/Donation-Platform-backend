@@ -150,6 +150,11 @@ def main():
     app = create_app()
     
     with app.app_context():
+        # Drop and recreate all tables for a clean seed
+        print("Dropping existing tables...")
+        db.drop_all()
+        print("Creating tables with current schema...")
+        db.create_all()
         seed_database()
 
 

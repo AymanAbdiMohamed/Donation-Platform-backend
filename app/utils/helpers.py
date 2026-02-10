@@ -2,6 +2,10 @@
 Helper Functions.
 
 Common utility functions used across the application.
+
+TODO: validate_email, format_currency, sanitize_string, and
+get_pagination_params are currently unused by any route or service.
+Either integrate them into routes/services or remove in next cleanup.
 """
 import re
 

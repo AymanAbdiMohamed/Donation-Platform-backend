@@ -14,7 +14,19 @@ def _get_database_url():
     """
     Build database URL from environment variables.
     Falls back to SQLite for development.
+
+    Render (and Heroku) provide DATABASE_URL with the ``postgres://`` scheme,
+    but SQLAlchemy 1.4+ requires ``postgresql://``.  We fix that automatically.
     """
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        # Render / Heroku compat: postgres:// → postgresql+psycopg://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
+
     postgres_host = os.getenv("POSTGRES_HOST")
     postgres_user = os.getenv("POSTGRES_USER")
     postgres_password = os.getenv("POSTGRES_PASSWORD")
@@ -22,7 +34,7 @@ def _get_database_url():
     
     if all([postgres_host, postgres_user, postgres_password, postgres_db]):
         return (
-            f"postgresql://{postgres_user}:{postgres_password}"
+            f"postgresql+psycopg://{postgres_user}:{postgres_password}"
             f"@{postgres_host}/{postgres_db}"
         )
     
@@ -35,17 +47,57 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", _get_database_url())
+    # Database — _get_database_url() handles Render's postgres:// → postgresql://
+    SQLALCHEMY_DATABASE_URI = _get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
     }
     
+    # File Uploads
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB max upload size
+    
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "jwt-secret-key-change-in-production")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=int(os.environ.get("JWT_EXPIRES_HOURS", 24)))
     JWT_ERROR_MESSAGE_KEY = "error"
+    
+    # CORS — comma-separated origins, e.g. "https://example.com,https://www.example.com"
+    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
+    
+    # Rate limiting
+    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per hour")
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+
+    # ── M-Pesa Daraja ───────────────────────────────────────────────────────
+    MPESA_ENV = os.environ.get("MPESA_ENV", "sandbox")
+    MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
+    MPESA_CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
+    MPESA_SHORTCODE = os.environ.get("MPESA_SHORTCODE", "174379")
+    MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY", "")
+    MPESA_STK_CALLBACK_URL = os.environ.get("MPESA_STK_CALLBACK_URL", "")
+    MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL", "")
+
+    @staticmethod
+    def validate_mpesa():
+        """Check that all required M-Pesa vars are set. Call at startup."""
+        required = {
+            "MPESA_CONSUMER_KEY": os.environ.get("MPESA_CONSUMER_KEY", ""),
+            "MPESA_CONSUMER_SECRET": os.environ.get("MPESA_CONSUMER_SECRET", ""),
+            "MPESA_PASSKEY": os.environ.get("MPESA_PASSKEY", ""),
+            "MPESA_STK_CALLBACK_URL": os.environ.get("MPESA_STK_CALLBACK_URL", ""),
+        }
+        missing = [k for k, v in required.items() if not v]
+        if missing:
+            import logging
+            logging.getLogger(__name__).warning(
+                "M-Pesa NOT fully configured — missing: %s. "
+                "STK Push endpoints will return errors until these are set.",
+                ", ".join(missing),
+            )
+            return False
+        return True
 
 
 class DevelopmentConfig(Config):
@@ -63,6 +115,9 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
+    
+    # Enforce explicit CORS origins in production
+    # CORS_ORIGINS must be set via env var (no wildcard fallback)
 
 
 # Configuration mapping

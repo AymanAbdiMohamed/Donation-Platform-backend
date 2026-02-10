@@ -129,6 +129,12 @@ class CharityService:
 
     @staticmethod
     def get_applications_by_status(status=None):
+        """
+        Get applications, optionally filtered by status.
+
+        Args:
+            status: One of CharityApplication.VALID_STATUSES or None for all.
+        """
         query = CharityApplication.query
         if status:
             query = query.filter_by(status=status)

@@ -2,6 +2,9 @@
 Donation Model.
 
 Handles donation records between donors and charities.
+
+A donation is created with status PENDING when an STK Push is initiated.
+The callback handler updates it to SUCCESS or FAILED.
 """
 from datetime import datetime, timezone
 
@@ -13,12 +16,19 @@ def utc_now():
     return datetime.now(timezone.utc)
 
 
+class DonationStatus:
+    """Enum-like constants for donation status."""
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
+
 class Donation(db.Model):
     """
     Donation record.
     
     Amount is stored in cents to avoid floating-point issues.
-    Example: $50.00 = 5000 cents
+    Example: $50.00 = 5000 cents  /  KES 500 = 50000 cents
     """
     __tablename__ = "donations"
     
@@ -39,7 +49,23 @@ class Donation(db.Model):
     is_anonymous = db.Column(db.Boolean, default=False)
     is_recurring = db.Column(db.Boolean, default=False)
     message = db.Column(db.Text, nullable=True)
+
+    # ── M-Pesa tracking fields ──────────────────────────────────────────
+    phone_number = db.Column(db.String(15), nullable=True)
+    status = db.Column(
+        db.String(10),
+        nullable=False,
+        default=DonationStatus.PENDING,
+        index=True,
+    )
+    checkout_request_id = db.Column(db.String(100), nullable=True, unique=True, index=True)
+    merchant_request_id = db.Column(db.String(100), nullable=True)
+    mpesa_receipt_number = db.Column(db.String(50), nullable=True)
+    failure_reason = db.Column(db.String(255), nullable=True)
+
+    # ── Timestamps ──────────────────────────────────────────────────────
     created_at = db.Column(db.DateTime, default=utc_now, index=True)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     # Relationships
     donor = db.relationship("User", back_populates="donations")
@@ -50,9 +76,9 @@ class Donation(db.Model):
         Initialize a new donation.
         
         Args:
-            amount: Donation amount in cents (must be positive)
-            donor_id: ID of the donating user
-            charity_id: ID of the receiving charity
+            amount (int): Donation amount in cents (must be positive)
+            donor_id (int): ID of the donating user
+            charity_id (int): ID of the receiving charity
         """
         if amount <= 0:
             raise ValueError("Donation amount must be positive")
@@ -67,10 +93,10 @@ class Donation(db.Model):
     @property
     def amount_dollars(self):
         """
-        Get donation amount in dollars.
+        Get donation amount in dollars (or KES major units).
         
         Returns:
-            float: Amount in dollars
+            float: Amount in major currency units
         """
         return self.amount / 100
     
@@ -79,7 +105,7 @@ class Donation(db.Model):
         Convert donation to dictionary representation.
         
         Args:
-            include_donor: Whether to include donor_id (respects anonymity)
+            include_donor (bool): Whether to include donor_id (respects anonymity)
             
         Returns:
             dict: Donation data
@@ -93,7 +119,12 @@ class Donation(db.Model):
             "is_anonymous": self.is_anonymous,
             "is_recurring": self.is_recurring,
             "message": self.message,
+            "status": self.status,
+            "phone_number": self.phone_number,
+            "checkout_request_id": self.checkout_request_id,
+            "mpesa_receipt_number": self.mpesa_receipt_number,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         
         # Only include donor_id if requested AND not anonymous
@@ -103,4 +134,4 @@ class Donation(db.Model):
         return data
     
     def __repr__(self):
-        return f"<Donation id={self.id} amount={self.amount} charity_id={self.charity_id}>"
+        return f"<Donation id={self.id} amount={self.amount} status={self.status}>"
