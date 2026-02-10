@@ -76,9 +76,9 @@ class Donation(db.Model):
         Initialize a new donation.
         
         Args:
-            amount: Donation amount in cents (must be positive)
-            donor_id: ID of the donating user
-            charity_id: ID of the receiving charity
+            amount (int): Donation amount in cents (must be positive)
+            donor_id (int): ID of the donating user
+            charity_id (int): ID of the receiving charity
         """
         if amount <= 0:
             raise ValueError("Donation amount must be positive")
@@ -105,7 +105,7 @@ class Donation(db.Model):
         Convert donation to dictionary representation.
         
         Args:
-            include_donor: Whether to include donor_id (respects anonymity)
+            include_donor (bool): Whether to include donor_id (respects anonymity)
             
         Returns:
             dict: Donation data
@@ -115,7 +115,7 @@ class Donation(db.Model):
             "amount": self.amount,
             "amount_kes": self.amount_kes,
             "charity_id": self.charity_id,
-            "charity_name": self.charity.name if self.charity else None,
+            "charity_name": self.charity.name if self.charity else "Unknown",
             "is_anonymous": self.is_anonymous,
             "is_recurring": self.is_recurring,
             "message": self.message,
