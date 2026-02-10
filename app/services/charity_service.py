@@ -145,15 +145,15 @@ class CharityService:
         """
         Approve application and create charity.
         """
-
         application = CharityApplication.query.get(application_id)
 
         if not application:
             raise ValueError("Application not found")
 
-        if not application.is_submitted():
+        # Allow approving if status is submitted OR pending (synonyms in our context)
+        if application.status not in ["submitted", "pending"]:
             raise ValueError(
-                f"Application is not submitted (current: {application.status})"
+                f"Application cannot be approved from status: {application.status}"
             )
 
         # Mark approved
@@ -171,10 +171,18 @@ class CharityService:
             contact_phone=application.contact_phone,
             website=application.website,
             address=application.address,
-            user_id=application.user_id
+            user_id=application.user_id,
+            is_active=True # Auto-activate
         )
 
         db.session.add(charity)
+        
+        # Update user role to 'charity'
+        from app.models import User
+        user = User.query.get(application.user_id)
+        if user:
+            user.role = "charity"
+        
         db.session.commit()
 
         return application, charity
@@ -186,9 +194,9 @@ class CharityService:
         if not application:
             raise ValueError("Application not found")
 
-        if not application.is_submitted():
+        if application.status not in ["submitted", "pending"]:
             raise ValueError(
-                f"Application is not submitted (current: {application.status})"
+                f"Application cannot be rejected from status: {application.status}"
             )
 
         application.reject(reason)
