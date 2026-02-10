@@ -14,6 +14,7 @@ from flask_jwt_extended import get_jwt_identity
 from app.auth import role_required
 from app.services import CharityService, DonationService, PaymentService
 from app.errors import bad_request, not_found
+from app.extensions import limiter
 
 donations_api_bp = Blueprint("donations_api", __name__)
 
@@ -35,6 +36,7 @@ def _normalise_phone(raw):
 
 @donations_api_bp.route("/mpesa", methods=["POST"])
 @role_required("donor")
+@limiter.limit("10 per minute")
 def initiate_mpesa_donation():
     """
     Initiate an M-Pesa STK Push donation.
