@@ -77,6 +77,19 @@ class UserService:
         return User.query.get(user_id)
     
     @staticmethod
+    def get_user(user_id):
+        """
+        Get user by ID (alias for get_by_id).
+        
+        Args:
+            user_id: User's ID
+            
+        Returns:
+            User: User instance or None
+        """
+        return User.query.get(user_id)
+    
+    @staticmethod
     def get_by_email(email):
         """
         Get user by email.
