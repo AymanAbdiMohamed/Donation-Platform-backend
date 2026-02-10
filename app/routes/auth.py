@@ -50,9 +50,9 @@ def register():
     if len(password) < 6:
         return bad_request("Password must be at least 6 characters")
     
-    # Only allow donor and charity roles for self-registration
-    if role not in ("donor", "charity"):
-        return bad_request("Role must be 'donor' or 'charity'")
+    # Allow donor, charity, and admin roles for self-registration
+    if role not in ("donor", "charity", "admin"):
+        return bad_request("Role must be 'donor', 'charity', or 'admin'")
     
     try:
         user = UserService.create_user(email=email, password=password, role=role)
