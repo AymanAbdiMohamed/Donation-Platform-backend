@@ -116,6 +116,19 @@ def get_donations():
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 20, type=int), 100)
 
+    result = DonationService.get_donations_by_donor(
+        donor_id=user_id,
+        page=page,
+        per_page=per_page,
+    )
+    return jsonify({
+        "donations": [d.to_dict() for d in result["donations"]],
+        "total": result["total"],
+        "page": result["page"],
+        "per_page": result["per_page"],
+        "pages": result["pages"],
+    })
+
 
 @donor_bp.route("/donations", methods=["POST"])
 @role_required("donor")
