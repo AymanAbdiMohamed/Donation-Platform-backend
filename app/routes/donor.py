@@ -266,7 +266,7 @@ def get_donation_status(donation_id):
         "id": donation.id,
         "status": donation.status,
         "mpesa_receipt_number": donation.mpesa_receipt_number,
-        "amount_dollars": donation.amount_dollars,
+        "amount_kes": donation.amount_kes,
         "charity_name": donation.charity.name if donation.charity else None,
     }), 200
 

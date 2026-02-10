@@ -365,7 +365,7 @@ def get_stats():
         "total_charity_users": total_charity_users,
         "total_charities": total_charities,
         "total_donations": total_donations,
-        "total_donations_dollars": total_donations / 100,
+        "total_donations_kes": total_donations / 100,
         "donation_count": donation_count,
         "pending_count": pending_count,
         "approved_count": approved_count,

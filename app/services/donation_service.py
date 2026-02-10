@@ -182,7 +182,8 @@ class DonationService:
         active_recurring = Donation.query.filter_by(donor_id=donor_id, is_recurring=True).count()
 
         return {
-            "total_donated": total_donated / 100,
+            "total_donated": total_donated,
+            "total_donated_dollars": total_donated / 100,
             "donation_count": donation_count,
             "charities_supported": unique_charities,
             "active_recurring": active_recurring,
