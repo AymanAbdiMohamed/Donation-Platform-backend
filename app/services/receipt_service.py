@@ -48,7 +48,7 @@ class ReceiptService:
             "donation_id": donation.id,
             "date": donation.created_at.isoformat() if donation.created_at else None,
             "amount": donation.amount,
-            "amount_dollars": donation.amount_dollars,
+            "amount_kes": donation.amount_kes,
             "donor": {
                 "name": donor.username,
                 "email": donor.email if not donation.is_anonymous else None
@@ -93,7 +93,7 @@ Date: {receipt['date']}
 
 DONATION SUMMARY
 ================
-Amount: KES {receipt['amount_dollars']:.2f}
+Amount: KES {receipt['amount_kes']:.2f}
 Charity: {receipt['charity']['name']}
 Donor: {donor_name}
 
