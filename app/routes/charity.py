@@ -9,10 +9,7 @@ from flask_jwt_extended import get_jwt_identity
 from app.auth import role_required
 from app.extensions import db, limiter
 from app.services import CharityService, DonationService
-from app.utils.file_upload import (
-    save_uploaded_file,
-    generate_storage_path
-)
+from app.utils.file_upload import save_uploaded_file, generate_storage_path
 from app.errors import bad_request, not_found, conflict
 
 charity_bp = Blueprint("charity", __name__)
@@ -28,11 +25,9 @@ charity_bp = Blueprint("charity", __name__)
 def apply():
     """
     Unified charity application submission.
-    Handles multipart/form-data and auto-approves for immediate display.
+    Handles multipart/form-data and submits for admin review.
     """
     user_id = int(get_jwt_identity())
-    
-    # Use form data instead of JSON
     data = request.form
     files = request.files
 
@@ -61,14 +56,17 @@ def apply():
             "contact_phone": data.get("phoneNumber"),
             "mission": data.get("missionStatement"),
             "location": data.get("regionServed"),
-            "category": "health", # Default for this platform
+            "category": "health",  # Default for this platform
         }
-        
-        # Save additional context in goals or description if needed
+
+        # Save additional context in goals or description
         goals = []
-        if data.get("targetAgeGroup"): goals.append(f"Target: {data.get('targetAgeGroup')}")
-        if data.get("menstrualHealthProgramme"): goals.append(f"Programme: {data.get('menstrualHealthProgramme')}")
-        if data.get("girlsReachedLastYear"): goals.append(f"Reach: {data.get('girlsReachedLastYear')} girls/year")
+        if data.get("targetAgeGroup"):
+            goals.append(f"Target: {data.get('targetAgeGroup')}")
+        if data.get("menstrualHealthProgramme"):
+            goals.append(f"Programme: {data.get('menstrualHealthProgramme')}")
+        if data.get("girlsReachedLastYear"):
+            goals.append(f"Reach: {data.get('girlsReachedLastYear')} girls/year")
         if goals:
             step_data["goals"] = " | ".join(goals)
 
@@ -88,7 +86,7 @@ def apply():
                     if success:
                         CharityService.add_document(
                             application_id=application.id,
-                            document_type="other", # Use valid type
+                            document_type="other",
                             file_path=result["path"],
                             original_filename=file.filename,
                             file_size=result.get("size"),
@@ -110,15 +108,12 @@ def apply():
 @charity_bp.route("/apply/step/<int:step>", methods=["PUT"])
 @role_required("charity")
 def save_application_step(step):
-    """
-    Save data for a specific application step.
-    """
+    """Save data for a specific application step."""
     user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
         return bad_request("Request body is required")
-
     if step < 1 or step > 4:
         return bad_request("Step must be between 1 and 4")
 
@@ -175,7 +170,6 @@ def get_application():
     """Get current charity application."""
     user_id = int(get_jwt_identity())
     application = CharityService.get_latest_application(user_id)
-
     return jsonify({
         "application": application.to_dict() if application else None
     }), 200
@@ -191,13 +185,11 @@ def upload_document():
     document_type = request.form.get("document_type")
     if not document_type:
         return bad_request("Document type is required")
-
     if "file" not in request.files:
         return bad_request("File is required")
 
     file = request.files["file"]
     application = CharityService.get_latest_application(user_id)
-
     if not application:
         return not_found("No application found")
 
@@ -237,12 +229,10 @@ def get_documents():
     """Get application documents."""
     user_id = int(get_jwt_identity())
     application = CharityService.get_latest_application(user_id)
-
     if not application:
         return not_found("No application found")
 
     documents = CharityService.get_application_documents(application.id)
-
     return jsonify({
         "documents": [d.to_dict() for d in documents]
     }), 200
@@ -257,10 +247,8 @@ def get_documents():
 def get_profile():
     user_id = int(get_jwt_identity())
     charity = CharityService.get_charity_by_user(user_id)
-
     if not charity:
         return not_found("Charity not found or pending approval")
-
     return jsonify({"charity": charity.to_dict()}), 200
 
 
@@ -269,7 +257,6 @@ def get_profile():
 def update_profile():
     user_id = int(get_jwt_identity())
     charity = CharityService.get_charity_by_user(user_id)
-
     if not charity:
         return not_found("Charity not found")
 
@@ -310,7 +297,6 @@ def update_profile():
         return bad_request("No valid fields to update")
 
     charity = CharityService.update_charity(charity.id, **updates)
-
     return jsonify({
         "message": "Profile updated successfully",
         "charity": charity.to_dict()
@@ -326,13 +312,11 @@ def update_profile():
 def get_donations():
     user_id = int(get_jwt_identity())
     charity = CharityService.get_charity_by_user(user_id)
-
     if not charity:
         return not_found("Charity not found")
 
     limit = request.args.get("limit", type=int)
     donations = DonationService.get_donations_by_charity(charity.id, limit)
-
     return jsonify({
         "donations": [d.to_dict(include_donor=True) for d in donations]
     }), 200
@@ -347,13 +331,11 @@ def get_donations():
 def dashboard():
     user_id = int(get_jwt_identity())
     charity = CharityService.get_charity_by_user(user_id)
-
     if not charity:
         return not_found("Charity not found")
 
     stats = CharityService.get_charity_stats(charity.id)
     recent = DonationService.get_donations_by_charity(charity.id, limit=5)
-
     return jsonify({
         "charity": charity.to_dict(),
         "stats": stats,
