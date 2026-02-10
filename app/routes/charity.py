@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import get_jwt_identity
 
 from app.auth import role_required
-from app.extensions import db
+from app.extensions import db, limiter
 from app.services import CharityService, DonationService
 from app.utils.file_upload import (
     save_uploaded_file,
@@ -24,6 +24,7 @@ charity_bp = Blueprint("charity", __name__)
 
 @charity_bp.route("/apply", methods=["POST"])
 @role_required("charity")
+@limiter.limit("5 per minute")
 def apply():
     """
     Unified charity application submission.
@@ -182,6 +183,7 @@ def get_application():
 
 @charity_bp.route("/application/documents", methods=["POST"])
 @role_required("charity")
+@limiter.limit("10 per minute")
 def upload_document():
     """Upload application documents."""
     user_id = int(get_jwt_identity())

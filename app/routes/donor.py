@@ -11,6 +11,7 @@ from flask_jwt_extended import get_jwt_identity
 from app.auth import role_required
 from app.services import CharityService, DonationService, ReceiptService, PaymentService
 from app.errors import bad_request, not_found
+from app.extensions import limiter
 
 donor_bp = Blueprint("donor", __name__)
 
@@ -54,6 +55,7 @@ def get_charity(charity_id):
 
 @donor_bp.route("/donate/mpesa", methods=["POST"])
 @role_required("donor")
+@limiter.limit("10 per minute")
 def donate_mpesa():
     """
     Initiate an M-Pesa STK Push donation.
@@ -141,113 +143,34 @@ def donate_mpesa():
         return bad_request(str(e))
 
 
-# ── Legacy simple donation (no M-Pesa) ─────────────────────────────────
-
-@donor_bp.route("/donate", methods=["POST"])
-@role_required("donor")
-def make_donation():
-    """
-    Simple donation (amount in cents, no payment gateway).
-
-    Kept for backwards compatibility.  Prefer /donor/donate/mpesa for
-    real M-Pesa payments.
-    """
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-
-    if not data:
-        return bad_request("Request body is required")
-
-    charity_id = data.get("charity_id")
-    amount = data.get("amount")  # cents
-
-    if not charity_id or amount is None:
-        return bad_request("charity_id and amount are required")
-
-    try:
-        amount_cents = int(amount)
-        if amount_cents <= 0:
-            return bad_request("Amount must be positive")
-    except (ValueError, TypeError):
-        return bad_request("Invalid amount")
-
-    charity = CharityService.get_charity(charity_id)
-    if not charity or not charity.is_active:
-        return not_found("Charity not found or inactive")
-
-    message = data.get("message")
-    if message and len(message) > 500:
-        return bad_request("Message must be 500 characters or fewer")
-
-    donation = DonationService.create_donation(
-        donor_id=user_id,
-        charity_id=charity_id,
-        amount_cents=amount_cents,
-        is_anonymous=data.get("is_anonymous", False),
-        is_recurring=data.get("is_recurring", False),
-        message=message,
-    )
-
-    return jsonify({
-        "message": "Donation created successfully",
-        "donation": donation.to_dict(),
-    }), 201
+# ── Legacy simple donation (removed) ────────────────────────────────────
+# POST /donor/donate was a test/dev-only simple donation endpoint
+# (no M‑Pesa, amount in cents).  Removed to eliminate dead code.
+# Use POST /donor/donate/mpesa  or POST /api/donations/mpesa instead.
 
 
 @donor_bp.route("/donations", methods=["GET"])
 @role_required("donor")
 def get_donations():
-    """Get donor's donation history."""
+    """Get donor's donation history (paginated)."""
     user_id = int(get_jwt_identity())
-    limit = request.args.get("limit", type=int)
-    donations = DonationService.get_donations_by_donor(user_id, limit=limit)
-    return jsonify({"donations": [d.to_dict() for d in donations]}), 200
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
 
-
-@donor_bp.route("/donations", methods=["POST"])
-@role_required("donor")
-def create_donation():
-    """Create a donation (simple flow — amount in cents, no payment gateway)."""
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-
-    if not data:
-        return bad_request("Request body is required")
-
-    charity_id = data.get("charity_id")
-    amount = data.get("amount")
-
-    if not charity_id or amount is None:
-        return bad_request("charity_id and amount are required")
-
-    try:
-        amount_cents = int(amount)
-        if amount_cents <= 0:
-            return bad_request("Amount must be positive")
-    except (ValueError, TypeError):
-        return bad_request("Invalid amount")
-
-    charity = CharityService.get_charity(charity_id)
-    if not charity or not charity.is_active:
-        return not_found("Charity not found or inactive")
-
-    message = data.get("message")
-    if message and len(message) > 500:
-        return bad_request("Message must be 500 characters or fewer")
-
-    donation = DonationService.create_donation(
-        donor_id=user_id,
-        charity_id=charity_id,
-        amount_cents=amount_cents,
-        is_anonymous=data.get("is_anonymous", False),
-        is_recurring=data.get("is_recurring", False),
-        message=message,
-    )
+    from app.models import Donation
+    pagination = Donation.query.filter_by(donor_id=user_id).order_by(
+        Donation.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
 
     return jsonify({
-        "message": "Donation created successfully",
-        "donation": donation.to_dict(),
-    }), 201
+        "donations": [d.to_dict() for d in pagination.items],
+        "pagination": {
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
+    }), 200
 
 
 @donor_bp.route("/dashboard", methods=["GET"])
