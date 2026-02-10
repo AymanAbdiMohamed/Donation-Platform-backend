@@ -171,3 +171,48 @@ def get_donation_status(donation_id):
         "amount_kes": donation.amount_kes,
         "charity_name": donation.charity.name if donation.charity else None,
     }), 200
+
+
+@donations_api_bp.route("/status/<checkout_id>", methods=["GET"])
+@role_required("donor")
+def get_donation_status_by_checkout(checkout_id):
+    """
+    Poll the status of a donation by checkout request ID.
+
+    GET /api/donations/status/<checkout_id>
+    Authorization: Bearer <JWT>
+
+    This is the preferred endpoint for polling after STK Push initiation,
+    since the frontend receives the checkout_request_id immediately.
+
+    Response 200:
+        {
+            "id": 1,
+            "status": "PENDING" | "SUCCESS" | "FAILED",
+            "mpesa_receipt_number": "...",
+            "amount_kes": 500,
+            "charity_name": "...",
+            "created_at": "2026-02-10T12:00:00Z",
+            "failure_reason": null
+        }
+    """
+    user_id = int(get_jwt_identity())
+    donation = DonationService.get_donation_by_checkout(checkout_id)
+
+    if not donation:
+        return not_found("Donation not found")
+
+    # Verify ownership
+    if donation.donor_id != user_id:
+        return not_found("Donation not found")
+
+    return jsonify({
+        "id": donation.id,
+        "status": donation.status,
+        "mpesa_receipt_number": donation.mpesa_receipt_number,
+        "amount": donation.amount,
+        "amount_kes": donation.amount_kes,
+        "charity_name": donation.charity.name if donation.charity else None,
+        "created_at": donation.created_at.isoformat() if donation.created_at else None,
+        "failure_reason": donation.failure_reason,
+    }), 200

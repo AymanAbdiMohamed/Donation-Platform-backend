@@ -59,6 +59,107 @@ def get_users():
     }), 200
 
 
+@admin_bp.route("/users/<int:user_id>", methods=["GET"])
+@role_required("admin")
+def get_user(user_id):
+    """
+    Get a specific user by ID.
+    
+    Args:
+        user_id: User ID
+        
+    Headers:
+        Authorization: Bearer <access_token>
+        
+    Returns:
+        200: User details
+        404: User not found
+    """
+    user = UserService.get_user(user_id)
+    
+    if not user:
+        return not_found("User not found")
+    
+    return jsonify({"user": user.to_dict()}), 200
+
+
+@admin_bp.route("/users/<int:user_id>/deactivate", methods=["POST"])
+@role_required("admin")
+@limiter.limit("30 per minute")
+def deactivate_user(user_id):
+    """
+    Deactivate a user account.
+    
+    Args:
+        user_id: User ID
+        
+    Headers:
+        Authorization: Bearer <access_token>
+        
+    Returns:
+        200: User deactivated
+        400: Cannot deactivate self or other admins
+        404: User not found
+    """
+    from flask_jwt_extended import get_jwt_identity
+    
+    current_user_id = int(get_jwt_identity())
+    
+    # Prevent self-deactivation
+    if user_id == current_user_id:
+        return bad_request("Cannot deactivate your own account")
+    
+    user = UserService.get_user(user_id)
+    
+    if not user:
+        return not_found("User not found")
+    
+    # Prevent deactivating other admins
+    if user.role == "admin":
+        return bad_request("Cannot deactivate admin accounts")
+    
+    user.is_active = False
+    from app.extensions import db
+    db.session.commit()
+    
+    return jsonify({
+        "message": "User deactivated",
+        "user": user.to_dict()
+    }), 200
+
+
+@admin_bp.route("/users/<int:user_id>/activate", methods=["POST"])
+@role_required("admin")
+@limiter.limit("30 per minute")
+def activate_user(user_id):
+    """
+    Reactivate a deactivated user account.
+    
+    Args:
+        user_id: User ID
+        
+    Headers:
+        Authorization: Bearer <access_token>
+        
+    Returns:
+        200: User activated
+        404: User not found
+    """
+    user = UserService.get_user(user_id)
+    
+    if not user:
+        return not_found("User not found")
+    
+    user.is_active = True
+    from app.extensions import db
+    db.session.commit()
+    
+    return jsonify({
+        "message": "User activated",
+        "user": user.to_dict()
+    }), 200
+
+
 # ==================
 # Application Management
 # ==================
