@@ -11,6 +11,7 @@ from flask_jwt_extended import get_jwt_identity
 from app.auth import role_required
 from app.services import CharityService, DonationService, ReceiptService, PaymentService
 from app.errors import bad_request, not_found
+from app.extensions import limiter
 
 donor_bp = Blueprint("donor", __name__)
 
@@ -55,6 +56,7 @@ def get_charity(charity_id):
 
 @donor_bp.route("/donate/mpesa", methods=["POST"])
 @role_required("donor")
+@limiter.limit("10 per minute")
 def donate_mpesa():
     """Initiate an M-Pesa STK Push donation."""
     user_id = int(get_jwt_identity())
@@ -162,11 +164,10 @@ def make_donation():
 @donor_bp.route("/donations", methods=["GET"])
 @role_required("donor")
 def get_donations():
-    """Get donor's donation history."""
+    """Get donor's donation history (paginated)."""
     user_id = int(get_jwt_identity())
-    limit = request.args.get("limit", type=int)
-    donations = DonationService.get_donations_by_donor(user_id, limit=limit)
-    return jsonify({"donations": [d.to_dict() for d in donations]}), 200
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
 
 
 @donor_bp.route("/donations", methods=["POST"])
