@@ -10,6 +10,7 @@ from app.auth import role_required
 from app.services import UserService, CharityService, DonationService
 from app.models import User, Charity, CharityApplication
 from app.errors import bad_request, not_found
+from app.extensions import limiter
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -22,26 +23,39 @@ admin_bp = Blueprint("admin", __name__)
 @role_required("admin")
 def get_users():
     """
-    Get all users on the platform.
+    Get all users on the platform (paginated).
     
     Headers:
         Authorization: Bearer <access_token>
         
     Query Parameters:
         role: Filter by role (optional)
+        page: Page number (default 1)
+        per_page: Items per page (default 20, max 100)
         
     Returns:
-        200: List of users
+        200: Paginated list of users
     """
     role = request.args.get("role")
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
     
+    query = User.query
     if role:
-        users = User.query.filter_by(role=role).all()
-    else:
-        users = UserService.get_all_users()
+        query = query.filter_by(role=role)
+    
+    pagination = query.order_by(User.id.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
     return jsonify({
-        "users": [u.to_dict() for u in users]
+        "users": [u.to_dict() for u in pagination.items],
+        "pagination": {
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
     }), 200
 
 
@@ -53,26 +67,44 @@ def get_users():
 @role_required("admin")
 def get_applications():
     """
-    Get all charity applications.
+    Get all charity applications (paginated).
     
     Headers:
         Authorization: Bearer <access_token>
         
     Query Parameters:
         status: Filter by status (pending, approved, rejected)
+        page: Page number (default 1)
+        per_page: Items per page (default 20, max 100)
         
     Returns:
-        200: List of applications
+        200: Paginated list of applications
     """
     status = request.args.get("status")
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
+    
     # Frontend sends ?status=pending but the model stores "submitted".
     # See CharityApplication.VALID_STATUSES for canonical values.
     if status == "pending":
         status = "submitted"
-    applications = CharityService.get_applications_by_status(status)
+    
+    query = CharityApplication.query
+    if status:
+        query = query.filter_by(status=status)
+    
+    pagination = query.order_by(CharityApplication.id.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
     return jsonify({
-        "applications": [a.to_dict() for a in applications]
+        "applications": [a.to_dict() for a in pagination.items],
+        "pagination": {
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
     }), 200
 
 
@@ -102,6 +134,7 @@ def get_application(app_id):
 
 @admin_bp.route("/applications/<int:app_id>/approve", methods=["POST"])
 @role_required("admin")
+@limiter.limit("30 per minute")
 def approve_application(app_id):
     """
     Approve a charity application.
@@ -135,6 +168,7 @@ def approve_application(app_id):
 
 @admin_bp.route("/applications/<int:app_id>/reject", methods=["POST"])
 @role_required("admin")
+@limiter.limit("30 per minute")
 def reject_application(app_id):
     """
     Reject a charity application.
@@ -179,27 +213,40 @@ def reject_application(app_id):
 @role_required("admin")
 def get_charities():
     """
-    Get all charities (including inactive).
+    Get all charities (including inactive, paginated).
     
     Headers:
         Authorization: Bearer <access_token>
         
     Query Parameters:
         active: Filter by active status (true/false)
+        page: Page number (default 1)
+        per_page: Items per page (default 20, max 100)
         
     Returns:
-        200: List of charities
+        200: Paginated list of charities
     """
     active = request.args.get("active")
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
     
+    query = Charity.query
     if active is not None:
         is_active = active.lower() == "true"
-        charities = Charity.query.filter_by(is_active=is_active).all()
-    else:
-        charities = CharityService.get_all_charities()
+        query = query.filter_by(is_active=is_active)
+    
+    pagination = query.order_by(Charity.id.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
     return jsonify({
-        "charities": [c.to_dict() for c in charities]
+        "charities": [c.to_dict() for c in pagination.items],
+        "pagination": {
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+        }
     }), 200
 
 

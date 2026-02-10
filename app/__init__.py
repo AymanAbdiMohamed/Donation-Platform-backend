@@ -59,9 +59,11 @@ def create_app(config_class=Config):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
     
-    # Create database tables
-    with app.app_context():
-        db.create_all()
+    # Database migrations managed by Flask-Migrate (Alembic).
+    # Run: flask db init   (once, to create migrations/)
+    #      flask db migrate (generate migration after model changes)
+    #      flask db upgrade (apply pending migrations)
+    # db.create_all() removed — use migrations instead.
 
     # Validate M-Pesa configuration at startup (warn, don't crash)
     with app.app_context():
