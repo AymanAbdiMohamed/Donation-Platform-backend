@@ -76,10 +76,13 @@ source venv/bin/activate  # Linux/Mac
 # Install dependencies
 pip install -r requirements.txt
 
-# Initialize database (creates tables)
-python -c "from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all()"
+# Run database migrations
+flask db upgrade
 
-# Seed with test data (optional)
+# Create admin user (production)
+flask create-admin --email admin@example.com --password secure_password
+
+# Seed with test data (development only - destructive!)
 python seed_db.py
 
 # Run the server
@@ -87,6 +90,34 @@ python run_app.py
 ```
 
 Server runs at `http://localhost:5000`
+
+> **Note:** Use Flask-Migrate for all database schema changes. Never use `db.create_all()` in production.
+
+## Recent Improvements (Feb 2026)
+
+### 🔧 Audit Fixes Applied
+
+**Data Integrity:**
+- ✅ Added DB CHECK constraints: `donation.amount > 0`, `user.role IN (donor, charity, admin)`
+- ✅ Fixed nullable defaults in migrations (boolean fields now `NOT NULL` with `server_default`)
+- ✅ Charity donations now properly include donor_id for non-anonymous donations
+
+**API Consistency:**
+- ✅ Renamed `total_donated_dollars` → `total_donated_kes` (KES-only platform)
+- ✅ Added `total_donations_kes` to charity stats responses
+- ✅ Standardized charity list responses (all include pagination wrapper)
+- ✅ Added frontend compatibility aliases: `region`, `image`, `verified` fields
+
+**Code Cleanup:**
+- ✅ Removed duplicate `/donor/donate/mpesa` endpoint (use `/api/donations/mpesa`)
+- ✅ All list endpoints now paginated (`page`, `per_page`, `total`, `pages`)
+
+**Migrations:**
+- `3a2b9c4d5e6f` - Fix nullable defaults (boolean fields)
+- `4b3c0d1e2f3g` - Add CHECK constraints (amount, role)
+
+### ⚠️ Security Note
+M-Pesa callback endpoint requires signature validation before production deployment.
 
 ## Configuration
 
@@ -119,10 +150,16 @@ Environment variables (set in `.env`):
 ### Donor Routes (`/donor`)
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/charities` | List active charities | Donor |
+| GET | `/charities` | List active charities (paginated) | Donor |
 | GET | `/charities/:id` | Get charity details | Donor |
-| POST | `/donate` | Make a donation | Donor |
-| GET | `/donations` | Get donation history | Donor |
+| GET | `/donations` | Get donation history (paginated) | Donor |
+| GET | `/dashboard` | Get donor stats | Donor |
+
+### Donation API (`/api/donations`)
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/mpesa` | Initiate M-Pesa STK Push | Donor |
+| GET | `/:id/status` | Poll donation status | Donor |
 
 ### Charity Routes (`/charity`)
 | Method | Endpoint | Description | Auth |
@@ -137,16 +174,22 @@ Environment variables (set in `.env`):
 ### Admin Routes (`/admin`)
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/users` | List all users | Admin |
-| GET | `/applications` | List applications | Admin |
+| GET | `/users` | List all users (paginated) | Admin |
+| GET | `/applications` | List applications (paginated) | Admin |
 | GET | `/applications/:id` | Get application | Admin |
 | POST | `/applications/:id/approve` | Approve application | Admin |
 | POST | `/applications/:id/reject` | Reject application | Admin |
-| GET | `/charities` | List all charities | Admin |
+| GET | `/charities` | List all charities (paginated) | Admin |
 | GET | `/charities/:id` | Get charity details | Admin |
 | DELETE | `/charities/:id` | Deactivate charity | Admin |
 | POST | `/charities/:id/activate` | Reactivate charity | Admin |
 | GET | `/stats` | Platform statistics | Admin |
+
+### Public Routes
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/charities` | List active charities (paginated) | No |
+| GET | `/charities/:id` | Get charity details | No |
 
 ## Authentication
 
@@ -210,25 +253,41 @@ After seeding with `python seed_db.py`:
 ### Database Migrations
 
 ```bash
-# Initialize migrations (first time)
-flask db init
-
-# Create migration
-flask db migrate -m "Description"
-
-# Apply migration
+# Apply pending migrations (always run after git pull)
 flask db upgrade
+
+# Create new migration after model changes
+flask db migrate -m "Description of changes"
+
+# Downgrade one migration (if needed)
+flask db downgrade
+
+# View migration history
+flask db history
 ```
+
+**Important Migration Notes:**
+- Always review auto-generated migrations before applying
+- Use `server_default` for boolean/default fields to ensure NOT NULL constraints
+- Test migrations on development database before production
+- Never edit applied migrations - create new ones instead
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Database not initialized**
+**Database schema out of sync**
 ```bash
-# Delete existing database and recreate
+# Apply all pending migrations
+flask db upgrade
+
+# If migrations are broken, reset database (DEVELOPMENT ONLY - DESTRUCTIVE!)
 rm instance/app.db
-python -c "from app import create_app; from app.extensions import db; app = create_app(); app.app_context().push(); db.create_all()"
+flask db upgrade
+
+# For production, always create proper migration instead
+flask db migrate -m "Fix schema issue"
+flask db upgrade
 ```
 
 **JWT token errors**

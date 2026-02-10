@@ -52,10 +52,13 @@ ENV/
 env/
 .venv/
 
-# Environment variables
+# Environment variables (contains sensitive credentials - NEVER commit)
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.test
 
 # Flask
 instance/
