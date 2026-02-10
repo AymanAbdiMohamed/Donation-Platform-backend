@@ -38,7 +38,16 @@ def _normalise_phone(raw):
 def get_charities():
     """Get list of active charities."""
     charities = CharityService.get_active_charities()
-    return jsonify({"charities": [c.to_dict() for c in charities]}), 200
+    # Standardized response format (matches public /charities endpoint)
+    return jsonify({
+        "charities": [c.to_dict() for c in charities],
+        "pagination": {
+            "page": 1,
+            "per_page": len(charities),
+            "total": len(charities),
+            "pages": 1,
+        }
+    }), 200
 
 
 @donor_bp.route("/charities/<int:charity_id>", methods=["GET"])
@@ -52,69 +61,7 @@ def get_charity(charity_id):
     return jsonify({"charity": charity.to_dict(), "stats": stats}), 200
 
 
-# ── M-Pesa donation ────────────────────────────────────────────────
-
-@donor_bp.route("/donate/mpesa", methods=["POST"])
-@role_required("donor")
-@limiter.limit("10 per minute")
-def donate_mpesa():
-    """Initiate an M-Pesa STK Push donation."""
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-    if not data:
-        return bad_request("Request body is required")
-
-    charity_id = data.get("charity_id")
-    amount = data.get("amount")
-    phone_raw = data.get("phone_number")
-    if not all([charity_id, amount, phone_raw]):
-        return bad_request("charity_id, amount, and phone_number are required")
-
-    # Validate amount
-    try:
-        amount_num = float(amount)
-        if amount_num <= 0:
-            return bad_request("Amount must be positive")
-        if amount_num != int(amount_num):
-            return bad_request("Amount must be a whole number (KES, no decimals)")
-    except (ValueError, TypeError):
-        return bad_request("Invalid amount")
-
-    # Validate phone
-    phone = _normalise_phone(phone_raw)
-    if not phone:
-        return bad_request("Invalid phone number. Use format 254XXXXXXXXX or 07XXXXXXXX")
-
-    # Validate charity
-    charity = CharityService.get_charity(charity_id)
-    if not charity or not charity.is_active:
-        return not_found("Charity not found or inactive")
-
-    # Check M-Pesa config
-    if not PaymentService.is_configured():
-        return bad_request("M-Pesa payments are not configured on this server.")
-
-    try:
-        result = DonationService.initiate_mpesa_donation(
-            donor_id=user_id,
-            charity_id=charity_id,
-            amount_kes=int(amount_num),
-            phone_number=phone,
-            is_anonymous=data.get("is_anonymous", False),
-            message=data.get("message", "").strip() or None,
-            account_reference=charity.name[:12] if charity.name else "SheNeeds",
-        )
-        return jsonify({
-            "message": "STK Push sent. Please check your phone to complete payment.",
-            "donation": result["donation"].to_dict(),
-            "checkout_request_id": result["checkout_request_id"],
-            "customer_message": result.get("customer_message", ""),
-        }), 200
-    except ValueError as e:
-        return bad_request(str(e))
-
-
-# ── Legacy/simple donation ────────────────────────────────────────
+# ── Legacy/simple donation (no payment gateway) ────────────────────
 
 @donor_bp.route("/donate", methods=["POST"])
 @role_required("donor")

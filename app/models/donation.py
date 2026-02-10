@@ -127,9 +127,9 @@ class Donation(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         
-        # Only include donor_id if requested AND not anonymous
-        if include_donor and not self.is_anonymous:
-            data["donor_id"] = self.donor_id
+        # Include donor_id if requested, but respect anonymity (still include id for charity internal tracking)
+        if include_donor:
+            data["donor_id"] = self.donor_id if not self.is_anonymous else None
         
         return data
     

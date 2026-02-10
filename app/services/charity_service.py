@@ -323,5 +323,6 @@ class CharityService:
 
         return {
             "total_donations": charity.get_total_donations(),
+            "total_donations_kes": charity.get_total_donations() / 100,
             "donation_count": charity.get_donation_count(),
         }
