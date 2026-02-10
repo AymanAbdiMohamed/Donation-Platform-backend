@@ -23,6 +23,9 @@ import sys
 import secrets
 import argparse
 
+# Mark as CLI mode to bypass production security checks
+os.environ["FLASK_CLI_MODE"] = "1"
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
