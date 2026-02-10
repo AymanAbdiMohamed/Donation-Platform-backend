@@ -2,6 +2,12 @@
 File Upload Utility.
 
 Provides secure file upload handling for charity documents and images.
+
+⚠️  WARNING — EPHEMERAL STORAGE (MVP)
+Files are saved to the local filesystem (instance/uploads/).
+On Render's ephemeral disk, uploads are LOST on every redeploy.
+This is accepted for MVP.  Post-MVP, migrate to S3 / Cloudinary.
+TODO: Replace local storage with a durable object-store before production scale.
 """
 import os
 import uuid

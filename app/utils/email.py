@@ -112,7 +112,7 @@ Date: {receipt['date']}
 
 DONATION SUMMARY
 ================
-Amount: KES {receipt['amount_dollars']:.2f}
+Amount: KES {receipt['amount_kes']:.2f}
 Charity: {receipt['charity']['name']}
 Donor: {donor_name}
 
@@ -149,7 +149,7 @@ Generated: {receipt['generated_at']}
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr style="background-color: #ecf0f1;">
                         <td style="padding: 10px; border: 1px solid #bdc3c7;"><strong>Amount</strong></td>
-                        <td style="padding: 10px; border: 1px solid #bdc3c7;">KES {receipt['amount_dollars']:.2f}</td>
+                        <td style="padding: 10px; border: 1px solid #bdc3c7;">KES {receipt['amount_kes']:.2f}</td>
                     </tr>
                     <tr>
                         <td style="padding: 10px; border: 1px solid #bdc3c7;"><strong>Charity</strong></td>

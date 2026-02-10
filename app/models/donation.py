@@ -28,7 +28,7 @@ class Donation(db.Model):
     Donation record.
     
     Amount is stored in cents to avoid floating-point issues.
-    Example: $50.00 = 5000 cents  /  KES 500 = 50000 cents
+    Platform is KES-only: KES 500 = 50000 cents.
     """
     __tablename__ = "donations"
     
@@ -91,12 +91,12 @@ class Donation(db.Model):
         )
     
     @property
-    def amount_dollars(self):
+    def amount_kes(self):
         """
-        Get donation amount in dollars (or KES major units).
+        Get donation amount in KES (major units).
         
         Returns:
-            float: Amount in major currency units
+            float: Amount in KES
         """
         return self.amount / 100
     
@@ -113,7 +113,7 @@ class Donation(db.Model):
         data = {
             "id": self.id,
             "amount": self.amount,
-            "amount_dollars": self.amount_dollars,
+            "amount_kes": self.amount_kes,
             "charity_id": self.charity_id,
             "charity_name": self.charity.name if self.charity else None,
             "is_anonymous": self.is_anonymous,
