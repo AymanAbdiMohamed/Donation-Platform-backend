@@ -21,7 +21,8 @@ services:
     branch: ayman/dev  # Auto-deploy from this branch
     
     # Build & Start Commands
-    buildCommand: pip install -r requirements.txt && flask db upgrade && python seed_admin.py
+    # safe_migrate.py handles the case where tables already exist but Alembic is unsynced
+    buildCommand: pip install -r requirements.txt && python scripts/safe_migrate.py && python seed_admin.py
     startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT run_app:app --timeout 120 --log-level info
     
     # Health Check (Render pings this to verify service is running)
