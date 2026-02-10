@@ -25,8 +25,11 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Validate secrets are not defaults in production
-    if not app.config.get('DEBUG') and not app.config.get('TESTING'):
+    # Determine if we're in production mode
+    is_production = not app.config.get('DEBUG') and not app.config.get('TESTING')
+
+    # Only enforce strict secrets in real production
+    if is_production:
         if app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
             raise RuntimeError("SECRET_KEY must be set via environment variable in production")
         if app.config['JWT_SECRET_KEY'] == 'jwt-secret-key-change-in-production':
@@ -35,6 +38,9 @@ def create_app(config_class=Config):
             raise RuntimeError("CORS_ORIGINS must be set to explicit origins in production (not '*')")
         if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
             raise RuntimeError("DATABASE_URL must point to a production database (not SQLite)")
+    else:
+        # Dev / migration environment: allow wildcard CORS
+        app.config["CORS_ORIGINS"] = "*"
 
     # Initialize extensions
     _init_extensions(app)
@@ -59,12 +65,6 @@ def create_app(config_class=Config):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
     
-    # Database migrations managed by Flask-Migrate (Alembic).
-    # Run: flask db init   (once, to create migrations/)
-    #      flask db migrate (generate migration after model changes)
-    #      flask db upgrade (apply pending migrations)
-    # db.create_all() removed — use migrations instead.
-
     # Validate M-Pesa configuration at startup (warn, don't crash)
     with app.app_context():
         config_class.validate_mpesa()
