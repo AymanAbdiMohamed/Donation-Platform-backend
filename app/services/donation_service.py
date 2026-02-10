@@ -183,7 +183,7 @@ class DonationService:
 
         return {
             "total_donated": total_donated,
-            "total_donated_dollars": total_donated / 100,
+            "total_donated_kes": total_donated / 100,
             "donation_count": donation_count,
             "charities_supported": unique_charities,
             "active_recurring": active_recurring,
