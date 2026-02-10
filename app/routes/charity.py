@@ -92,14 +92,12 @@ def apply():
                             mime_type=file.content_type
                         )
 
-        # 4. Submit and Auto-Approve
-        CharityService.submit_application(user_id)
-        app, charity = CharityService.approve_application(application.id)
+        # 4. Submit for review (do not auto-approve)
+        application = CharityService.submit_application(user_id)
 
         return jsonify({
-            "message": "Charity application submitted and approved successfully",
-            "application": app.to_dict(),
-            "charity": charity.to_dict()
+            "message": "Charity application submitted successfully and is pending approval",
+            "application": application.to_dict()
         }), 201
 
     except ValueError as e:
