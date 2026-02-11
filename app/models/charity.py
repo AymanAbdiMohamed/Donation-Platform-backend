@@ -189,6 +189,18 @@ class Charity(db.Model):
         lazy="dynamic",
         cascade="all, delete-orphan"
     )
+    stories = db.relationship(
+        "Story",
+        back_populates="charity",
+        lazy="dynamic",
+        cascade="all, delete-orphan"
+    )
+    beneficiaries = db.relationship(
+        "Beneficiary",
+        back_populates="charity",
+        lazy="dynamic",
+        cascade="all, delete-orphan"
+    )
 
     VALID_CATEGORIES = (
         "education", "health", "environment", "animals",
