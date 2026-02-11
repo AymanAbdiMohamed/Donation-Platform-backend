@@ -220,9 +220,13 @@ def _register_blueprints(app):
     from app.routes.health import health_bp
     from app.routes.public import public_bp
     from app.routes.donations_api import donations_api_bp
+    from app.routes.stories import stories_bp
+    from app.routes.beneficiaries import beneficiaries_bp
     
     app.register_blueprint(health_bp)
     app.register_blueprint(public_bp)  # No prefix - public routes
+    app.register_blueprint(stories_bp)  # No prefix - has both public and charity routes
+    app.register_blueprint(beneficiaries_bp)  # No prefix - charity routes under /charity/
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(donor_bp, url_prefix="/donor")
     app.register_blueprint(charity_bp, url_prefix="/charity")

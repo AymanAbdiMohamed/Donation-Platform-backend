@@ -130,6 +130,27 @@ class DonationService:
         db.session.commit()
         return donation
 
+    @staticmethod
+    def create_donation_after_payment(
+        checkout_request_id, donor_id, charity_id, amount_cents,
+        transaction_id=None, is_anonymous=False, is_recurring=False, message=None,
+    ):
+        """Create a donation record after an external payment has been confirmed."""
+        donation = Donation(
+            amount=amount_cents,
+            donor_id=donor_id,
+            charity_id=charity_id,
+            is_anonymous=is_anonymous,
+            is_recurring=is_recurring,
+            message=message,
+            status=DonationStatus.SUCCESS,
+            checkout_request_id=checkout_request_id,
+            mpesa_receipt_number=transaction_id,
+        )
+        db.session.add(donation)
+        db.session.commit()
+        return donation
+
     # ── Query helpers ───────────────────────────────────────────────────
 
     @staticmethod
@@ -141,10 +162,21 @@ class DonationService:
         return Donation.query.filter_by(checkout_request_id=checkout_request_id).first()
 
     @staticmethod
-    def get_donations_by_donor(donor_id, limit=None):
+    def get_donations_by_donor(donor_id, page=None, per_page=None, limit=None):
         query = Donation.query.filter_by(donor_id=donor_id).order_by(
             Donation.created_at.desc()
         )
+        # Paginated mode (used by GET /donor/donations)
+        if page is not None and per_page is not None:
+            pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            return {
+                "donations": pagination.items,
+                "total": pagination.total,
+                "page": pagination.page,
+                "per_page": pagination.per_page,
+                "pages": pagination.pages,
+            }
+        # Simple limit mode (used by dashboard)
         if limit:
             query = query.limit(limit)
         return query.all()
