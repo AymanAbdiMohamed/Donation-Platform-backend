@@ -10,28 +10,32 @@ CLI:
 """
 
 import os
-from dotenv import load_dotenv
 import click
 
-# ── Load environment variables first ──────────────────────────────
-env_file = os.path.join(os.path.dirname(__file__), ".env.production")
-if os.path.exists(env_file):
-    load_dotenv(env_file)
-else:
-    print(f"⚠️  Warning: {env_file} not found. Using system environment variables.")
+# ── Load environment variables for local development ─────────────
+env = os.environ.get("FLASK_ENV", "development")
+if env != "production":
+    from dotenv import load_dotenv
+
+    env_file = os.path.join(os.path.dirname(__file__), ".env.production")
+    if os.path.exists(env_file):
+        load_dotenv(env_file)
+        print(f"✅ Loaded local env from {env_file}")
+    else:
+        print(f"⚠️  Warning: {env_file} not found. Using system environment variables.")
 
 # ── Flask imports after env loaded ───────────────────────────────
 from app import create_app
 from app.config import config_by_name
 
-# Determine environment (default to development)
-env = os.environ.get("FLASK_ENV", "development")
+# ── Determine configuration class ───────────────────────────────
 config_class = config_by_name.get(env, config_by_name["default"])
 
 # ── Create the Flask application ────────────────────────────────
 app = create_app(config_class)
 
-# ── Optional: Debug print to verify M-Pesa configuration ─────────
+# ── Optional: Debug print to verify M-Pesa / API configuration ──
+print("⚡ Flask environment:", env)
 print("MPESA_ENV:", app.config.get("MPESA_ENV"))
 print("MPESA_CONSUMER_KEY:", app.config.get("MPESA_CONSUMER_KEY"))
 print("MPESA_SHORTCODE:", app.config.get("MPESA_SHORTCODE"))
@@ -61,5 +65,5 @@ def create_admin(email, password):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = env != "production"
-    print(f"Starting server in {env} mode on port {port} (debug={debug})...")
+    print(f"🚀 Starting server in {env} mode on port {port} (debug={debug})...")
     app.run(host="0.0.0.0", port=port, debug=debug)
