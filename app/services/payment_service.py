@@ -215,7 +215,7 @@ class PaymentService:
                 merchant_request_id (str)
                 result_code (int)
                 result_desc (str)
-                mpesa_receipt_number (str | None)  — only on success
+                mpesa_receipt_number (str | None)  # only on success
                 amount (int | None)
                 phone_number (str | None)
                 transaction_date (str | None)
