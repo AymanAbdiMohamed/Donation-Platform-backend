@@ -8,10 +8,10 @@ SheNeeds is a donation platform designed to bridge the gap between generous dono
 
 ### Key Features
 
-- 🔐 **JWT Authentication** - Secure user authentication with role-based access control
-- 👥 **Multi-Role System** - Support for donors, charities, and administrators
-- 🏢 **Charity Verification** - Application and approval process for charities
-- 💰 **Donation Management** - Track and manage donations with detailed records
+-  **JWT Authentication** - Secure user authentication with role-based access control
+-  **Multi-Role System** - Support for donors, charities, and administrators
+-  **Charity Verification** - Application and approval process for charities
+-  **Donation Management** - Track and manage donations with detailed records
 - 📊 **Dashboard Analytics** - Real-time statistics for charities and administrators
 - 🛡️ **Error Handling** - Comprehensive error handling with standardized responses
 - 🗄️ **Database Migrations** - Flask-Migrate for version-controlled database schema
