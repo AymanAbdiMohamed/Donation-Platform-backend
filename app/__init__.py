@@ -9,6 +9,8 @@ import os
 import sys
 import logging
 
+from flask_cors import CORS
+
 from flask import Flask
 from app.config import Config
 from app.extensions import db, jwt, cors, migrate, limiter
@@ -142,7 +144,7 @@ def _init_extensions(app):
     origins = app.config.get("CORS_ORIGINS", "*")
     if origins != "*":
         origins = [o.strip() for o in origins.split(",") if o.strip()]
-    cors.init_app(
+    CORS(
         app,
         resources={r"/*": {"origins": origins}},
         supports_credentials=True,
