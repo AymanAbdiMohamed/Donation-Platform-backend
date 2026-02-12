@@ -67,11 +67,15 @@ def initiate_mpesa_donation():
             "customer_message": "..."
         }
     """
+    current_app.logger.info("🔄 M-Pesa donation request received")
     user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
+        current_app.logger.warning("❌ No request body provided")
         return bad_request("Request body is required")
+
+    current_app.logger.info(f"📝 Processing donation for user {user_id}: {data}")
 
     charity_id = data.get("charity_id")
     amount = data.get("amount")
@@ -79,6 +83,7 @@ def initiate_mpesa_donation():
 
     # ── Validate required fields ────────────────────────────────────────
     if not all([charity_id, amount, phone_raw]):
+        current_app.logger.warning("❌ Missing required fields")
         return bad_request("charity_id, amount, and phone_number are required")
 
     # ── Validate amount ─────────────────────────────────────────────────
@@ -125,6 +130,8 @@ def initiate_mpesa_donation():
             account_reference=charity.name[:12] if charity.name else "Donation",
         )
 
+        current_app.logger.info(f"✅ STK Push initiated successfully for donation {result['donation'].id}")
+
         return jsonify({
             "message": "STK Push sent. Check your phone to complete payment.",
             "donation": result["donation"].to_dict(),
@@ -133,6 +140,7 @@ def initiate_mpesa_donation():
         }), 200
 
     except ValueError as exc:
+        current_app.logger.error(f"❌ Validation error: {exc}")
         return bad_request(str(exc))
 
 
