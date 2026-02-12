@@ -168,3 +168,4 @@ def mpesa_timeout():
         payload = None
     current_app.logger.warning("M-Pesa timeout notification: %s", payload)
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
+
