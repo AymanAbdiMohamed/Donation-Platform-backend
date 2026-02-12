@@ -7,132 +7,81 @@ This service provides a high-level interface for donation payments and integrate
 with the improved M-Pesa utility module for better error handling and logging.
 """
 import logging
-from flask import current_app
-
+import os
+from base64 import b64encode
+from datetime import datetime
 import requests
-
-from app.utils.mpesa import MpesaClient, MpesaError, test_mpesa_connection
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
 
-class PaymentService:
-    """Service class for M-Pesa Daraja payment processing."""
+class MpesaError(Exception):
+    pass
 
-    @staticmethod
-    def is_configured() -> bool:
-        """
-        Check if M-Pesa is properly configured.
-        Returns:
-            bool: True if all required M-Pesa config is present
-        """
+
+class MpesaClient:
+    """Client for Safaricom Daraja API (sandbox and production)."""
+
+    def __init__(self):
+        self.consumer_key = os.environ.get("MPESA_CONSUMER_KEY")
+        self.consumer_secret = os.environ.get("MPESA_CONSUMER_SECRET")
+        self.shortcode = os.environ.get("MPESA_SHORTCODE")
+        self.passkey = os.environ.get("MPESA_PASSKEY")
+        self.callback_url = os.environ.get("MPESA_STK_CALLBACK_URL")
+        self.env = os.environ.get("MPESA_ENV", "sandbox").lower()
+
+        if not all([self.consumer_key, self.consumer_secret, self.shortcode, self.passkey, self.callback_url]):
+            raise MpesaError("Incomplete M-Pesa configuration")
+
+    def get_base_url(self) -> str:
+        return "https://sandbox.safaricom.co.ke" if self.env == "sandbox" else "https://api.safaricom.co.ke"
+
+    def get_access_token(self) -> str:
+        """Fetch a valid OAuth token from Safaricom."""
+        url = f"{self.get_base_url()}/oauth/v1/generate?grant_type=client_credentials"
         try:
-            MpesaClient()  # Validate configuration
-            return True
-        except MpesaError as e:
-            logger.warning(f"M-Pesa not configured: {e}")
-            return False
+            resp = requests.get(url, auth=(self.consumer_key, self.consumer_secret), timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            token = data.get("access_token")
+            if not token:
+                raise MpesaError(f"No access token returned: {data}")
+            return token
+        except requests.RequestException as exc:
+            raise MpesaError(f"OAuth token request failed: {exc}")
 
-    @staticmethod
-    def get_mpesa_access_token() -> str:
-        """
-        Get a valid M-Pesa OAuth access token.
-        Returns:
-            str: Bearer access token
-        Raises:
-            RuntimeError: If token generation fails
-        """
-        try:
-            client = MpesaClient()
-            return client.get_access_token()
-        except MpesaError as e:
-            logger.error(f"Failed to get M-Pesa token: {e}")
-            raise RuntimeError(str(e))
+    def generate_password(self) -> tuple[str, str]:
+        """Generate STK Push password and timestamp."""
+        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        raw = f"{self.shortcode}{self.passkey}{timestamp}"
+        password = b64encode(raw.encode()).decode()
+        return password, timestamp
 
-    @staticmethod
-    def initiate_stk_push(amount: int, phone_number: str, account_reference: str, transaction_desc: str) -> dict:
-        """
-        Initiate an M-Pesa STK Push (Lipa Na M-Pesa Online).
+    def initiate_stk_push(self, phone: str, amount: int, reference: str, description: str) -> dict:
+        """Perform STK Push request."""
+        access_token = self.get_access_token()
+        password, timestamp = self.generate_password()
 
-        Args:
-            amount: Amount in KES.
-            phone_number: Customer phone in 254XXXXXXXXX format.
-            account_reference: e.g., charity name or "DONATION-<id>".
-            transaction_desc: Human-readable description.
-
-        Returns:
-            dict: success status and response details or error message
-        """
-        if not PaymentService.is_configured():
-            return {"success": False, "error": "M-Pesa is not configured on this server"}
-
-        try:
-            client = MpesaClient()
-            return client.initiate_stk_push(
-                phone=phone_number,
-                amount=int(amount),
-                reference=str(account_reference),
-                description=str(transaction_desc)
-            )
-        except MpesaError as e:
-            logger.error(f"STK Push failed: {e}")
-            return {"success": False, "error": str(e)}
-        except Exception as e:
-            logger.error(f"Unexpected error in STK Push: {e}")
-            return {"success": False, "error": "Payment service temporarily unavailable"}
-
-    @staticmethod
-    def generate_password() -> tuple[str, str]:
-        """
-        Legacy STK Push password generation.
-
-        Returns:
-            tuple: (password, timestamp)
-        Raises:
-            RuntimeError: if password cannot be generated
-        """
-        try:
-            client = MpesaClient()
-            return client.generate_password()
-        except MpesaError as e:
-            raise RuntimeError(str(e))
-
-    @staticmethod
-    def legacy_stk_push(amount: int, phone_number: str, account_reference: str, transaction_desc: str) -> dict:
-        """
-        Legacy STK Push using raw HTTP request.
-        """
-        if not PaymentService.is_configured():
-            return {"success": False, "error": "M-Pesa is not configured on this server"}
-
-        try:
-            access_token = PaymentService.get_mpesa_access_token()
-            password, timestamp = PaymentService.generate_password()
-        except RuntimeError as exc:
-            return {"success": False, "error": str(exc)}
-
-        shortcode = current_app.config.get("MPESA_SHORTCODE")
-        callback_url = current_app.config.get("MPESA_STK_CALLBACK_URL")
-
-        # Normalize phone number to 254XXXXXXXXX
-        phone_number = str(phone_number).strip()
-        if phone_number.startswith("0"):
-            phone_number = "254" + phone_number[1:]
-        elif phone_number.startswith("+"):
-            phone_number = phone_number[1:]
+        # Normalize phone to 254XXXXXXXXX
+        phone = str(phone).strip()
+        if phone.startswith("0"):
+            phone = "254" + phone[1:]
+        elif phone.startswith("+"):
+            phone = phone[1:]
 
         payload = {
-            "BusinessShortCode": shortcode,
+            "BusinessShortCode": self.shortcode,
             "Password": password,
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": int(amount),
-            "PartyA": phone_number,
-            "PartyB": shortcode,
-            "PhoneNumber": phone_number,
-            "CallBackURL": callback_url,
-            "AccountReference": str(account_reference)[:12],  # max 12 chars
-            "TransactionDesc": str(transaction_desc)[:13],    # max 13 chars
+            "PartyA": phone,
+            "PartyB": self.shortcode,
+            "PhoneNumber": phone,
+            "CallBackURL": self.callback_url,
+            "AccountReference": str(reference)[:12],
+            "TransactionDesc": str(description)[:13],
         }
 
         headers = {
@@ -140,16 +89,14 @@ class PaymentService:
             "Content-Type": "application/json",
         }
 
-        base_url = MpesaClient.get_base_url()
-        url = f"{base_url}/mpesa/stkpush/v1/processrequest"
+        url = f"{self.get_base_url()}/mpesa/stkpush/v1/processrequest"
 
         try:
             resp = requests.post(url, json=payload, headers=headers, timeout=30)
             resp.raise_for_status()
             result = resp.json()
         except requests.RequestException as exc:
-            logger.error("STK Push request failed: %s", exc)
-            return {"success": False, "error": f"STK Push request failed: {exc}"}
+            raise MpesaError(f"STK Push request failed: {exc}")
 
         if result.get("ResponseCode") == "0":
             return {
@@ -160,24 +107,51 @@ class PaymentService:
                 "customer_message": result.get("CustomerMessage", ""),
             }
 
-        return {
-            "success": False,
-            "error": result.get("ResponseDescription")
-                     or result.get("errorMessage")
-                     or "STK Push initiation failed",
-        }
+        raise MpesaError(result.get("errorMessage") or result.get("ResponseDescription") or "STK Push failed")
+
+
+class PaymentService:
+    """Service class for M-Pesa Daraja payment processing."""
+
+    @staticmethod
+    def is_configured() -> bool:
+        try:
+            MpesaClient()
+            return True
+        except MpesaError as e:
+            logger.warning(f"M-Pesa not configured: {e}")
+            return False
+
+    @staticmethod
+    def get_mpesa_access_token() -> str:
+        try:
+            client = MpesaClient()
+            return client.get_access_token()
+        except MpesaError as e:
+            logger.error(f"Failed to get M-Pesa token: {e}")
+            raise RuntimeError(str(e))
+
+    @staticmethod
+    def initiate_stk_push(amount: int, phone_number: str, account_reference: str, transaction_desc: str) -> dict:
+        if not PaymentService.is_configured():
+            return {"success": False, "error": "M-Pesa is not configured on this server"}
+        try:
+            client = MpesaClient()
+            return client.initiate_stk_push(
+                phone=phone_number,
+                amount=int(amount),
+                reference=account_reference,
+                description=transaction_desc
+            )
+        except MpesaError as e:
+            logger.error(f"STK Push failed: {e}")
+            return {"success": False, "error": str(e)}
+        except Exception as e:
+            logger.error(f"Unexpected error in STK Push: {e}")
+            return {"success": False, "error": "Payment service temporarily unavailable"}
 
     @staticmethod
     def parse_stk_callback(callback_data: dict) -> dict:
-        """
-        Parse the M-Pesa STK callback payload.
-
-        Args:
-            callback_data: Dictionary from Safaricom callback
-
-        Returns:
-            dict: Parsed results including success, IDs, and metadata
-        """
         try:
             body = callback_data.get("Body", {}).get("stkCallback", {})
         except (AttributeError, TypeError):
@@ -196,7 +170,6 @@ class PaymentService:
         }
 
         if result_code == 0:
-            # Payment succeeded — extract metadata
             items = body.get("CallbackMetadata", {}).get("Item", [])
             meta = {item.get("Name"): item.get("Value") for item in items}
 
@@ -209,19 +182,13 @@ class PaymentService:
                 "transaction_date": str(meta.get("TransactionDate", "")),
             }
 
-        # Payment failed / cancelled
-        return {
-            **base,
-            "success": False,
-            "error": result_desc or "Payment was not completed",
-        }
+        return {**base, "success": False, "error": result_desc or "Payment was not completed"}
 
     @staticmethod
     def test_connection() -> dict:
-        """
-        Test M-Pesa connection and configuration.
-
-        Returns:
-            dict: Test results with success status and details
-        """
-        return test_mpesa_connection()
+        """Test connection by fetching a token."""
+        try:
+            token = MpesaClient().get_access_token()
+            return {"success": True, "access_token": token}
+        except MpesaError as e:
+            return {"success": False, "error": str(e)}
