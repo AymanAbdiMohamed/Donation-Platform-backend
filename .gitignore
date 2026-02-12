@@ -2,7 +2,7 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
-.env
+.env.production
 *.db
 instance/
 .pytest_cache/
