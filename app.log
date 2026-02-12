@@ -1,0 +1,15 @@
+DEBUG: App context: CLI=False, Production=True, FLASK_ENV=production
+✅ Loaded local env from /root/projects/DonationPlatform/Donation-Platform-backend/.env.production
+⚡ Flask environment: development
+MPESA_ENV: sandbox
+MPESA_CONSUMER_KEY: gX2z2whvs1Dm3kGLjBZAyH7VKmeGwgAAFMqr5he9ujqHmeCY
+MPESA_SHORTCODE: 174379
+🚀 Starting server in development mode on port 5000 (debug=True)...
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.106.95:5000
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
