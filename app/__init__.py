@@ -217,6 +217,7 @@ def _init_extensions(app):
 def _register_blueprints(app):
     """Register all application blueprints."""
     from app.routes import auth_bp, donor_bp, charity_bp, admin_bp, payment_bp
+    from app.routes.payment_frontend import payment_bp as frontend_payment_bp  # new
     from app.routes.health import health_bp
     from app.routes.public import public_bp
     from app.routes.donations_api import donations_api_bp
