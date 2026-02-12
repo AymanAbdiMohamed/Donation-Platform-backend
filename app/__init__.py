@@ -168,6 +168,16 @@ def _init_extensions(app):
             replace_existing=True
         )
 
+    # Configure Email Service
+    from app.utils.email import EmailService
+    EmailService.configure(
+        smtp_host=app.config.get("MAIL_SERVER"),
+        smtp_port=app.config.get("MAIL_PORT"),
+        smtp_user=app.config.get("MAIL_USERNAME"),
+        smtp_password=app.config.get("MAIL_PASSWORD"),
+        from_email=app.config.get("MAIL_DEFAULT_SENDER")
+    )
+
 
 def _register_blueprints(app):
     """Register all blueprints."""

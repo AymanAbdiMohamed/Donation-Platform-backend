@@ -70,6 +70,13 @@ class Config:
     RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per hour")
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
+    # ── Email (Mailtrap/SMTP) ──────────────────────────────────────────────
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", 2525))
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@sheneeds.org")
+
     # ── M-Pesa Daraja ───────────────────────────────────────────────────────
     MPESA_ENV = os.environ.get("MPESA_ENV", "sandbox")
     MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
