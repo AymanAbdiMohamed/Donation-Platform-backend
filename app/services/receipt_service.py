@@ -152,3 +152,86 @@ Generated: {receipt['generated_at']}
             subject=subject,
             body=body
         )
+
+    @staticmethod
+    def generate_pdf_receipt(donation_id):
+        """
+        Generate a PDF receipt.
+        
+        Args:
+            donation_id: ID of the donation
+            
+        Returns:
+            bytes: PDF content
+        """
+        from xhtml2pdf import pisa
+        from io import BytesIO
+        
+        receipt = ReceiptService.generate_receipt(donation_id)
+        
+        # Simple HTML template for the receipt
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Helvetica, Arial, sans-serif; padding: 40px; color: #333; }}
+                .header {{ text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ec4899; padding-bottom: 20px; }}
+                .title {{ font-size: 24px; font-weight: bold; color: #ec4899; }}
+                .meta {{ font-size: 14px; color: #666; margin-top: 10px; }}
+                .content {{ margin-bottom: 40px; }}
+                .row {{ margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }}
+                .label {{ font-weight: bold; width: 150px; display: inline-block; }}
+                .value {{ display: inline-block; }}
+                .footer {{ text-align: center; font-size: 12px; color: #999; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">OFFICIAL DONATION RECEIPT</div>
+                <div class="meta">Receipt #{receipt['receipt_number']} • {receipt['date'][:10]}</div>
+            </div>
+            
+            <div class="content">
+                <div class="row">
+                    <span class="label">Amount:</span>
+                    <span class="value">KES {receipt['amount_kes']:,.2f}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Charity:</span>
+                    <span class="value">{receipt['charity']['name']}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Donor:</span>
+                    <span class="value">{receipt['donor']['name'] if not receipt['is_anonymous'] else 'Anonymous'}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Transaction ID:</span>
+                    <span class="value">{receipt['donation_id']}</span>
+                </div>
+                
+                <h3 style="margin-top: 30px; color: #333;">Charity Details</h3>
+                <div class="row">
+                    <span class="label">Address:</span>
+                    <span class="value">{receipt['charity']['address']}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Email:</span>
+                    <span class="value">{receipt['charity']['contact_email']}</span>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Thank you for your generous support!</p>
+                <p>SheNeeds Platform • Generated on {receipt['generated_at']}</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        pdf_buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(html_content, dest=pdf_buffer)
+        
+        if pisa_status.err:
+            raise ValueError("PDF generation failed")
+            
+        return pdf_buffer.getvalue()

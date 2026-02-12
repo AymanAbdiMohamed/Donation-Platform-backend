@@ -211,6 +211,32 @@ def email_donation_receipt(donation_id):
         return not_found(str(e))
 
 
+@donor_bp.route("/donations/<int:donation_id>/receipt/pdf", methods=["GET"])
+@role_required("donor")
+def get_donation_receipt_pdf(donation_id):
+    """Get PDF receipt for a specific donation."""
+    from flask import make_response
+    
+    user_id = int(get_jwt_identity())
+    donation = DonationService.get_donation(donation_id)
+    if not donation or donation.donor_id != user_id:
+        return not_found("Donation not found")
+
+    try:
+        pdf_content = ReceiptService.generate_pdf_receipt(donation_id)
+        
+        response = make_response(pdf_content)
+        response.headers["Content-Type"] = "application/pdf"
+        response.headers["Content-Disposition"] = f"attachment; filename=receipt_{donation_id}.pdf"
+        return response
+        
+    except ValueError as e:
+        return bad_request(str(e))
+    except ImportError:
+        return bad_request("PDF generation service unavailable")
+
+
+
 # ── Donation status polling ────────────────────────────────────
 
 @donor_bp.route("/donations/<int:donation_id>/status", methods=["GET"])

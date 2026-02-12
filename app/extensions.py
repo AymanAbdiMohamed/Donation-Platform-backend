@@ -10,6 +10,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_apscheduler import APScheduler
 
 # Database ORM
 db = SQLAlchemy()
@@ -29,3 +30,6 @@ limiter = Limiter(
     default_limits=[],  # No default; applied per-blueprint/route
     storage_uri="memory://",
 )
+
+# Task Scheduler
+scheduler = APScheduler()

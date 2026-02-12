@@ -62,6 +62,37 @@ class DonationService:
             "customer_message": stk.get("customer_message", ""),
         }
 
+    @staticmethod
+    def create_donation_after_stk_push(
+        checkout_request_id, merchant_request_id, donor_id, charity_id,
+        amount_cents, phone_number, is_anonymous=False, is_recurring=True,
+        message=None
+    ):
+        """
+        Create a PENDING donation record after a successful background STK push.
+        Used by the SchedulerService.
+        """
+        donation = Donation(
+            amount=amount_cents,
+            donor_id=donor_id,
+            charity_id=charity_id,
+            phone_number=phone_number,
+            status=DonationStatus.PENDING,
+            checkout_request_id=checkout_request_id,
+            merchant_request_id=merchant_request_id,
+            is_anonymous=is_anonymous,
+            is_recurring=is_recurring,
+            message=message,
+        )
+        db.session.add(donation)
+        db.session.commit()
+        
+        logger.info(
+            "PENDING recurring donation #%d created (checkout=%s)",
+            donation.id, checkout_request_id,
+        )
+        return donation
+
     # ── Callback processing ─────────────────────────────────────────────
 
     @staticmethod

@@ -472,3 +472,63 @@ def get_stats():
         "approved_count": approved_count,
         "rejected_count": rejected_count
     }), 200
+
+
+@admin_bp.route("/analytics", methods=["GET"])
+@role_required("admin")
+def get_analytics():
+    """
+    Get time-series analytics for charts.
+    """
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    from app.extensions import db
+    from app.models import Donation, DonationStatus
+
+    # 1. Donations over last 30 days
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    
+    daily_stats = db.session.query(
+        func.date(Donation.created_at).label('date'),
+        func.sum(Donation.amount).label('total_amount'),
+        func.count(Donation.id).label('count')
+    ).filter(
+        Donation.status == DonationStatus.SUCCESS,
+        Donation.created_at >= thirty_days_ago
+    ).group_by(
+        func.date(Donation.created_at)
+    ).order_by(
+        func.date(Donation.created_at)
+    ).all()
+    
+    # Format for frontend (recharts)
+    # Ensure all days are represented (even zero days) could be done here or frontend.
+    # We'll return the raw data for now.
+    trends = [
+        {
+            "date": str(stat.date),
+            "amount_kes": float(stat.total_amount) / 100,
+            "count": stat.count
+        }
+        for stat in daily_stats
+    ]
+
+    # 2. Top 5 Charities by Donation Volume
+    top_charities = db.session.query(
+        Charity.name,
+        func.sum(Donation.amount).label('total_raised')
+    ).join(Donation).filter(
+        Donation.status == DonationStatus.SUCCESS
+    ).group_by(Charity.name).order_by(
+        func.sum(Donation.amount).desc()
+    ).limit(5).all()
+
+    charity_ranking = [
+        {"name": c.name, "raised_kes": float(c.total_raised) / 100}
+        for c in top_charities
+    ]
+
+    return jsonify({
+        "trends": trends,
+        "top_charities": charity_ranking
+    }), 200

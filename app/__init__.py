@@ -13,9 +13,10 @@ from flask_cors import CORS
 
 from flask import Flask
 from app.config import Config
-from app.extensions import db, jwt, cors, migrate, limiter
+from app.extensions import db, jwt, cors, migrate, limiter, scheduler
 from app.errors import register_error_handlers
 from app.auth import register_jwt_handlers
+from app.services.scheduler_service import SchedulerService
 
 
 def _is_cli_context() -> bool:
@@ -152,6 +153,20 @@ def _init_extensions(app):
 
     migrate.init_app(app, db)
     limiter.init_app(app)
+
+    # Initialize Scheduler
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        scheduler.init_app(app)
+        scheduler.start()
+        
+        # Add recurring donation job
+        scheduler.add_job(
+            id="process_recurring_donations",
+            func=SchedulerService.process_recurring_donations,
+            trigger="interval",
+            hours=24,  # Run once daily
+            replace_existing=True
+        )
 
 
 def _register_blueprints(app):

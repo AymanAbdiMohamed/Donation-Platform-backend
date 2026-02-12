@@ -9,14 +9,17 @@ from app.models.charity_document import CharityDocument
 from app.models.donation import Donation
 from app.models.story import Story
 from app.models.beneficiary import Beneficiary, InventoryItem
+from app.models.subscription import Subscription, SubscriptionStatus
 
 __all__ = [
     "User",
     "Charity",
     "CharityApplication",
     "CharityDocument",
-    "Donation",
+    "DonationStatus",
     "Story",
     "Beneficiary",
     "InventoryItem",
+    "Subscription",
+    "SubscriptionStatus",
 ]
