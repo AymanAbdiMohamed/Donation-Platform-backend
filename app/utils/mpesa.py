@@ -65,6 +65,10 @@ class MpesaClient:
     
     def _validate_config(self) -> None:
         """Validate that all required M-Pesa configuration is present."""
+        if self._get_config("MPESA_MOCK_MODE") == "True":
+            logger.info("⚠️ M-Pesa Mock Mode enabled: Skipping configuration validation")
+            return
+
         required_keys = [
             "MPESA_CONSUMER_KEY",
             "MPESA_CONSUMER_SECRET", 
