@@ -77,7 +77,7 @@ print_section "4. Available M-Pesa Endpoints"
 echo "✓ Health check: GET $BACKEND_URL/health/mpesa"
 echo "✓ STK Push: POST $BACKEND_URL/api/donations/mpesa (requires JWT auth)"
 echo "✓ Status check: GET $BACKEND_URL/api/donations/status/<checkout_id> (requires JWT auth)"
-echo "✓ Callback: POST $BACKEND_URL/api/donations/mpesa/callback (Safaricom only)"
+echo "✓ Callback: POST $BACKEND_URL/api/mpesa/callback (Safaricom only)"
 
 print_section "5. Test with Python Script"
 echo "For comprehensive testing, run:"
