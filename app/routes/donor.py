@@ -12,6 +12,7 @@ from app.auth import role_required
 from app.services import CharityService, DonationService, ReceiptService, PaymentService
 from app.errors import bad_request, not_found
 from app.extensions import limiter
+from app.utils.pesapal import PesapalClient
 
 donor_bp = Blueprint("donor", __name__)
 
@@ -282,3 +283,104 @@ def get_recurring():
     user_id = int(get_jwt_identity())
     recurring = DonationService.get_recurring_donations(user_id)
     return jsonify({"recurring": [d.to_dict() for d in recurring]}), 200
+
+
+# ── Pesapal Payment Integration ───────────────────────────────────
+
+@donor_bp.route("/donations/pesapal", methods=["POST"])
+@role_required("donor")
+@limiter.limit("10 per minute")
+def create_pesapal_donation():
+    """
+    Initiate a donation via Pesapal payment gateway.
+    
+    Returns a payment URL that the user should be redirected to.
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    
+    if not data:
+        return bad_request("Request body is required")
+    
+    charity_id = data.get("charity_id")
+    amount = data.get("amount")  # KES
+    phone = data.get("phone")
+    email = data.get("email")
+    message = data.get("message", "")
+    is_anonymous = data.get("is_anonymous", False)
+    
+    if not all([charity_id, amount, phone, email]):
+        return bad_request("charity_id, amount, phone, and email are required")
+    
+    # Validate charity exists
+    charity = CharityService.get_charity(charity_id)
+    if not charity or not charity.is_active:
+        return not_found("Charity not found")
+    
+    # Normalize phone
+    normalized_phone = _normalise_phone(phone)
+    if not normalized_phone:
+        return bad_request("Invalid phone number format. Use 254XXXXXXXXX")
+    
+    try:
+        amount_float = float(amount)
+        if amount_float < 1:
+            return bad_request("Amount must be at least 1 KES")
+    except (ValueError, TypeError):
+        return bad_request("Invalid amount")
+    
+    # Generate unique reference
+    import time
+    reference = f"DON-{user_id}-{int(time.time())}"
+    
+    # Create pending donation record
+    donation = DonationService.create_donation(
+        donor_id=user_id,
+        charity_id=charity_id,
+        amount_cents=int(amount_float * 100),
+        is_anonymous=is_anonymous,
+        is_recurring=False,
+        message=message
+    )
+    
+    # Update with reference
+    donation.checkout_request_id = reference
+    from app.extensions import db
+    db.session.commit()
+    
+    # Initiate Pesapal payment
+    try:
+        client = PesapalClient()
+        callback_url = f"{request.host_url.rstrip('/')}/api/pesapal/callback"
+        
+        result = client.initiate_payment(
+            amount=amount_float,
+            description=f"Donation to {charity.name}",
+            reference=reference,
+            email=email,
+            phone=normalized_phone,
+            callback_url=callback_url
+        )
+        
+        if result.get("success"):
+            return jsonify({
+                "success": True,
+                "payment_url": result["payment_url"],
+                "tracking_id": result["tracking_id"],
+                "reference": reference,
+                "donation_id": donation.id
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Payment initiation failed")
+            }), 500
+            
+    except Exception as e:
+        import logging
+        logging.error(f"Pesapal payment error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Payment gateway error"
+        }), 500
+

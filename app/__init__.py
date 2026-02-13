@@ -204,3 +204,7 @@ def _register_blueprints(app):
     # Payment / Donations API
     app.register_blueprint(payment_bp, url_prefix="/api/mpesa")
     app.register_blueprint(donations_api_bp, url_prefix="/api/donations")
+    
+    # Pesapal payment gateway
+    from app.routes.pesapal import pesapal_bp
+    app.register_blueprint(pesapal_bp)

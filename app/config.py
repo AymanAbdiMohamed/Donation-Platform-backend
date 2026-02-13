@@ -87,6 +87,12 @@ class Config:
     MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL")
     MPESA_MOCK_MODE = os.environ.get("MPESA_MOCK_MODE", "False")
 
+    # ── Pesapal Payment Gateway ─────────────────────────────────────────────
+    PESAPAL_CONSUMER_KEY = os.environ.get("PESAPAL_CONSUMER_KEY", "")
+    PESAPAL_CONSUMER_SECRET = os.environ.get("PESAPAL_CONSUMER_SECRET", "")
+    PESAPAL_ENV = os.environ.get("PESAPAL_ENV", "sandbox")
+    PESAPAL_CALLBACK_URL = os.environ.get("PESAPAL_CALLBACK_URL", "")
+
     @staticmethod
     def validate_mpesa():
         """Check that all required M-Pesa vars are set. Call at startup."""
