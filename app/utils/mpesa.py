@@ -65,7 +65,8 @@ class MpesaClient:
     
     def _validate_config(self) -> None:
         """Validate that all required M-Pesa configuration is present."""
-        if self._get_config("MPESA_MOCK_MODE") == "True":
+        mock_mode = str(self._get_config("MPESA_MOCK_MODE")).lower()
+        if mock_mode == "true":
             logger.info("⚠️ M-Pesa Mock Mode enabled: Skipping configuration validation")
             return
 
@@ -111,7 +112,7 @@ class MpesaClient:
             logger.debug("Using cached M-Pesa token")
             return _token_cache["access_token"]
             
-        if self._get_config("MPESA_MOCK_MODE") == "True":
+        if str(self._get_config("MPESA_MOCK_MODE")).lower() == "true":
             return "mock_access_token_12345"
         
         logger.info("Refreshing M-Pesa access token...")
@@ -221,7 +222,7 @@ class MpesaClient:
         logger.info(f"Initiating STK Push: {amount} KES to {phone}")
         
         # Check for Mock Mode
-        if self._get_config("MPESA_MOCK_MODE") == "True":
+        if str(self._get_config("MPESA_MOCK_MODE")).lower() == "true":
             logger.info("⚠️ M-Pesa Mock Mode Enabled: Simulating STK Push with realistic delay")
             
             checkout_id = f"ws_CO_{int(time.time())}{random.randint(100, 999)}"
@@ -343,7 +344,7 @@ class MpesaClient:
         logger.info(f"Querying STK Push status for: {checkout_request_id}")
         
         # Check for Mock Mode
-        if self._get_config("MPESA_MOCK_MODE") == "True":
+        if str(self._get_config("MPESA_MOCK_MODE")).lower() == "true":
             logger.info("⚠️ M-Pesa Mock Mode: Simulating successful query")
             return {
                 "success": True,
