@@ -123,6 +123,8 @@ class Donation(db.Model):
             "is_recurring": self.is_recurring,
             "message": self.message,
             "status": self.status,
+            "payment_method": self.payment_method,
+            "verification_status": self.verification_status,
             "phone_number": self.phone_number,
             "checkout_request_id": self.checkout_request_id,
             "mpesa_receipt_number": self.mpesa_receipt_number,
