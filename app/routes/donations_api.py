@@ -160,3 +160,91 @@ def get_donation_status_by_checkout(checkout_id):
         "created_at": donation.created_at.isoformat() if donation.created_at else None,
         "failure_reason": donation.failure_reason,
     }), 200
+
+
+@donations_api_bp.route("/manual", methods=["POST"])
+@role_required("donor")
+@limiter.limit("5 per minute")
+def create_manual_donation():
+    """
+    Create a manual donation (Till/PayBill flow).
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data:
+        return bad_request("Request body is required")
+
+    charity_id = data.get("charity_id")
+    amount = data.get("amount")
+    phone_raw = data.get("phone_number")
+
+    if not all([charity_id, amount, phone_raw]):
+        return bad_request("charity_id, amount, and phone_number are required")
+
+    try:
+        amount_num = float(amount)
+        if amount_num <= 0:
+            return bad_request("Amount must be positive")
+    except (ValueError, TypeError):
+        return bad_request("Invalid amount")
+
+    phone = _normalise_phone(phone_raw)
+    if not phone:
+        return bad_request("Invalid phone number")
+
+    charity = CharityService.get_charity(charity_id)
+    if not charity or not charity.is_active:
+        return not_found("Charity not found")
+
+    try:
+        donation = DonationService.create_manual_donation(
+            donor_id=user_id,
+            charity_id=charity_id,
+            amount_kes=amount_num,
+            phone_number=phone,
+            message=data.get("message", "").strip() or None,
+            is_anonymous=data.get("is_anonymous", False),
+        )
+
+        return jsonify({
+            "message": "Manual donation initiated.",
+            "donation": donation.to_dict(),
+            "paybill_number": current_app.config.get("MPESA_PAYBILL_NUMBER", "174379"),
+            "account_name": current_app.config.get("MPESA_ACCOUNT_NAME", "SheNeeds"),
+            "reference": f"DONATE{donation.id}"
+        }), 201
+
+    except Exception as exc:
+        current_app.logger.error(f"Error creating manual donation: {exc}")
+        return jsonify({"error": str(exc)}), 500
+
+
+@donations_api_bp.route("/<int:donation_id>/submit-code", methods=["POST"])
+@role_required("donor")
+def submit_transaction_code(donation_id):
+    """
+    Submit transaction code for a manual donation.
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    code = data.get("transaction_code")
+
+    if not code:
+        return bad_request("transaction_code is required")
+
+    donation = DonationService.get_donation(donation_id)
+    if not donation or donation.donor_id != user_id:
+        return not_found("Donation not found")
+
+    if donation.payment_method != 'MANUAL':
+        return bad_request("This donation was not initiated as a manual payment")
+
+    result = DonationService.submit_transaction_code(donation_id, code)
+    if not result:
+        return jsonify({"error": "Failed to submit code"}), 500
+
+    return jsonify({
+        "message": "Transaction code submitted for verification.",
+        "status": "PENDING_VERIFICATION"
+    }), 200

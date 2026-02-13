@@ -86,6 +86,8 @@ class Config:
     MPESA_STK_CALLBACK_URL = os.environ.get("MPESA_STK_CALLBACK_URL")
     MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL")
     MPESA_MOCK_MODE = os.environ.get("MPESA_MOCK_MODE", "False")
+    MPESA_PAYBILL_NUMBER = os.environ.get("MPESA_PAYBILL_NUMBER", "174379")
+    MPESA_ACCOUNT_NAME = os.environ.get("MPESA_ACCOUNT_NAME", "SheNeeds")
 
     # ── Pesapal Payment Gateway ─────────────────────────────────────────────
     PESAPAL_CONSUMER_KEY = os.environ.get("PESAPAL_CONSUMER_KEY", "")
