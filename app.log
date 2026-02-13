@@ -170,3 +170,11 @@ sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: c
 	before or while processing the request.
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 127.0.0.1 - - [13/Feb/2026 06:35:10] "POST /api/mpesa/callback HTTP/1.1" 200 -
+✅ Loaded local env from /root/projects/DonationPlatform/Donation-Platform-backend/.env.production
+⚡ Flask environment: development
+MPESA_ENV: sandbox
+MPESA_CONSUMER_KEY: YzxdNBPnt7KQCzUIaSXNK03J0daksaeNnppW3ceNRA3Ia2Xp
+MPESA_SHORTCODE: 174379
+🚀 Starting server in development mode on port 5000 (debug=True)...
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:396: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown: {'/mp-52czlp90'}
+  warnings.warn(
