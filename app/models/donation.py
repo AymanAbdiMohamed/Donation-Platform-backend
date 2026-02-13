@@ -61,6 +61,9 @@ class Donation(db.Model):
     checkout_request_id = db.Column(db.String(100), nullable=True, unique=True, index=True)
     merchant_request_id = db.Column(db.String(100), nullable=True)
     mpesa_receipt_number = db.Column(db.String(50), nullable=True)
+    mpesa_transaction_code = db.Column(db.String(20), nullable=True)  # For manual payments
+    payment_method = db.Column(db.String(20), default='STK_PUSH')  # STK_PUSH or MANUAL
+    verification_status = db.Column(db.String(20), default='PENDING')  # PENDING, VERIFIED, REJECTED
     failure_reason = db.Column(db.String(255), nullable=True)
 
     # ── Timestamps ──────────────────────────────────────────────────────

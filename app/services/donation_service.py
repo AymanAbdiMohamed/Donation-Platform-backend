@@ -63,6 +63,48 @@ class DonationService:
         }
 
     @staticmethod
+    def create_manual_donation(donor_id, charity_id, amount_kes, phone_number, message=None, is_anonymous=False):
+        """
+        Create a donation that will be paid manually via Till/PayBill.
+        """
+        if amount_kes <= 0:
+            raise ValueError("Amount must be a positive number")
+
+        amount_cents = int(amount_kes * 100)
+        donation = Donation(
+            amount=amount_cents,
+            donor_id=donor_id,
+            charity_id=charity_id,
+            phone_number=phone_number,
+            message=message,
+            is_anonymous=is_anonymous,
+            payment_method='MANUAL',
+            status=DonationStatus.PENDING,
+            verification_status='PENDING'
+        )
+        db.session.add(donation)
+        db.session.commit()
+        
+        logger.info("PENDING manual donation #%d created", donation.id)
+        return donation
+
+    @staticmethod
+    def submit_transaction_code(donation_id, transaction_code):
+        """
+        Submit the M-Pesa transaction code for a manual donation.
+        """
+        donation = Donation.query.get(donation_id)
+        if not donation:
+            return None
+        
+        donation.mpesa_transaction_code = transaction_code.strip().upper()
+        donation.verification_status = 'PENDING'
+        db.session.commit()
+        
+        logger.info("Transaction code %s submitted for donation #%d", donation.mpesa_transaction_code, donation.id)
+        return donation
+
+    @staticmethod
     def create_donation_after_stk_push(
         checkout_request_id, merchant_request_id, donor_id, charity_id,
         amount_cents, phone_number, is_anonymous=False, is_recurring=True,
