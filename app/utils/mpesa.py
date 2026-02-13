@@ -18,6 +18,7 @@ Usage:
 import time
 import base64
 import logging
+import random
 from datetime import datetime
 from typing import Dict, Tuple, Optional
 
@@ -217,11 +218,26 @@ class MpesaClient:
         
         # Check for Mock Mode
         if self._get_config("MPESA_MOCK_MODE") == "True":
-            logger.info("⚠️ M-Pesa Mock Mode Enabled: Simulating successful STK Push")
+            logger.info("⚠️ M-Pesa Mock Mode Enabled: Simulating STK Push with realistic delay")
+            
+            checkout_id = f"ws_CO_{int(time.time())}{random.randint(100, 999)}"
+            merchant_id = f"GR_{int(time.time())}{random.randint(100, 999)}"
+            
+            # Start background thread to simulate callback after 30-40 seconds
+            from app.utils.mock_mpesa import start_mock_callback
+            from flask import current_app
+            
+            start_mock_callback(
+                checkout_request_id=checkout_id,
+                phone=phone,
+                amount=amount,
+                app=current_app._get_current_object()
+            )
+            
             return {
                 "success": True,
-                "checkout_request_id": f"ws_CO_{int(time.time())}_MOCK",
-                "merchant_request_id": f"GR_{int(time.time())}_MOCK",
+                "checkout_request_id": checkout_id,
+                "merchant_request_id": merchant_id,
                 "response_description": "Success. Request accepted for processing",
                 "customer_message": "Success. Request accepted for processing"
             }
