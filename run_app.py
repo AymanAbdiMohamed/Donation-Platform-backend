@@ -39,7 +39,6 @@ print("⚡ Flask environment:", env)
 print("MPESA_ENV:", app.config.get("MPESA_ENV"))
 print("MPESA_CONSUMER_KEY:", app.config.get("MPESA_CONSUMER_KEY"))
 print("MPESA_SHORTCODE:", app.config.get("MPESA_SHORTCODE"))
-print("MPESA_MOCK_MODE:", app.config.get("MPESA_MOCK_MODE"))
 
 # ── CLI Commands ───────────────────────────────────────────────
 @app.cli.command("create-admin")
