@@ -153,6 +153,48 @@ def mpesa_callback():
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
 
 
+@payment_bp.route("/query/<checkout_request_id>", methods=["GET"])
+def query_stk_status(checkout_request_id):
+    """
+    Query the status of an STK Push transaction.
+    
+    This endpoint can be called by the frontend to check payment status.
+    """
+    from app.utils.mpesa import MpesaClient
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"STK Query request for: {checkout_request_id}")
+    
+    try:
+        client = MpesaClient()
+        result = client.query_stk_status(checkout_request_id)
+        
+        if result.get("success"):
+            return jsonify({
+                "success": True,
+                "result_code": result.get("result_code"),
+                "result_desc": result.get("result_desc"),
+                "is_complete": result.get("is_complete", False),
+                "is_successful": result.get("is_successful", False),
+                "checkout_request_id": result.get("checkout_request_id"),
+                "merchant_request_id": result.get("merchant_request_id")
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Query failed")
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"STK Query endpoint error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+
 @payment_bp.route("/timeout", methods=["POST"])
 @verify_safaricom_callback
 def mpesa_timeout():

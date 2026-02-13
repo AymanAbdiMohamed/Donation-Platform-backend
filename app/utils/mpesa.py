@@ -306,8 +306,105 @@ class MpesaClient:
             
             return {
                 "success": False,
-                "error": error_msg,
-                "response_code": response_code
+                "error": error_msg, # Changed from str(e) to error_msg to match original logic
+                "checkout_request_id": None # Added this line
+            }
+    
+    def query_stk_status(self, checkout_request_id: str) -> Dict:
+        """
+        Query the status of an STK Push transaction.
+        
+        Args:
+            checkout_request_id: The CheckoutRequestID from STK Push response
+            
+        Returns:
+            Dict with status information
+        """
+        logger.info(f"Querying STK Push status for: {checkout_request_id}")
+        
+        # Check for Mock Mode
+        if self._get_config("MPESA_MOCK_MODE") == "True":
+            logger.info("⚠️ M-Pesa Mock Mode: Simulating successful query")
+            return {
+                "success": True,
+                "result_code": "0",
+                "result_desc": "The service request is processed successfully.",
+                "checkout_request_id": checkout_request_id
+            }
+        
+        # Get fresh token
+        try:
+            access_token = self.get_access_token()
+        except Exception as e:
+            logger.error(f"Failed to get access token for query: {e}")
+            return {
+                "success": False,
+                "error": f"Authentication failed: {str(e)}"
+            }
+        
+        # Generate password and timestamp
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        shortcode = self._get_config("MPESA_SHORTCODE")
+        passkey = self._get_config("MPESA_PASSKEY")
+        password = base64.b64encode(f"{shortcode}{passkey}{timestamp}".encode()).decode()
+        
+        payload = {
+            "BusinessShortCode": shortcode,
+            "Password": password,
+            "Timestamp": timestamp,
+            "CheckoutRequestID": checkout_request_id
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{self.base_url}/mpesa/stkpushquery/v1/query"
+        
+        try:
+            logger.debug(f"STK Query URL: {url}")
+            logger.debug(f"STK Query payload: {payload}")
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            
+            logger.debug(f"STK Query response status: {response.status_code}")
+            logger.debug(f"STK Query response: {response.text}")
+            
+            if response.status_code != 200:
+                return {
+                    "success": False,
+                    "error": f"Query failed: {response.status_code} - {response.text}"
+                }
+            
+            data = response.json()
+            
+            # Check ResponseCode first
+            if data.get("ResponseCode") != "0":
+                return {
+                    "success": False,
+                    "error": data.get("ResponseDescription", "Query request failed")
+                }
+            
+            # Return the result
+            result_code = data.get("ResultCode")
+            result_desc = data.get("ResultDesc", "")
+            
+            return {
+                "success": True,
+                "result_code": result_code,
+                "result_desc": result_desc,
+                "checkout_request_id": data.get("CheckoutRequestID"),
+                "merchant_request_id": data.get("MerchantRequestID"),
+                "is_complete": result_code is not None,
+                "is_successful": result_code == "0"
+            }
+            
+        except Exception as e:
+            logger.error(f"STK Query error: {e}")
+            return {
+                "success": False,
+                "error": str(e)
             }
     
     def _normalize_phone(self, phone: str) -> Optional[str]:
