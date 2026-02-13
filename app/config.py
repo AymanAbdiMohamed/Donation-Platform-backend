@@ -82,9 +82,10 @@ class Config:
     MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
     MPESA_CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
     MPESA_SHORTCODE = os.environ.get("MPESA_SHORTCODE", "174379")
-    MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY", "")
-    MPESA_STK_CALLBACK_URL = os.environ.get("MPESA_STK_CALLBACK_URL", "")
-    MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL", "")
+    MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY")
+    MPESA_STK_CALLBACK_URL = os.environ.get("MPESA_STK_CALLBACK_URL")
+    MPESA_TIMEOUT_URL = os.environ.get("MPESA_TIMEOUT_URL")
+    MPESA_MOCK_MODE = os.environ.get("MPESA_MOCK_MODE", "False")
 
     @staticmethod
     def validate_mpesa():

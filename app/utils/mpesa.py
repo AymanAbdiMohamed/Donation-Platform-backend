@@ -101,11 +101,15 @@ class MpesaClient:
         """
         now = time.time()
         
-        # Return cached token if still valid (with 60s buffer)
         if (_token_cache["access_token"] and 
             _token_cache["expires_at"] - 60 > now):
             logger.debug("Using cached M-Pesa token")
             return _token_cache["access_token"]
+            
+        if self._get_config("MPESA_MOCK_MODE") == "True":
+            return "mock_access_token_12345"
+        
+        logger.info("Refreshing M-Pesa access token...")
         
         logger.info("Refreshing M-Pesa access token...")
         
@@ -211,6 +215,17 @@ class MpesaClient:
         """
         logger.info(f"Initiating STK Push: {amount} KES to {phone}")
         
+        # Check for Mock Mode
+        if self._get_config("MPESA_MOCK_MODE") == "True":
+            logger.info("⚠️ M-Pesa Mock Mode Enabled: Simulating successful STK Push")
+            return {
+                "success": True,
+                "checkout_request_id": f"ws_CO_{int(time.time())}_MOCK",
+                "merchant_request_id": f"GR_{int(time.time())}_MOCK",
+                "response_description": "Success. Request accepted for processing",
+                "customer_message": "Success. Request accepted for processing"
+            }
+
         # Get fresh token
         try:
             access_token = self.get_access_token()

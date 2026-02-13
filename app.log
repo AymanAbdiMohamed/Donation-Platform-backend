@@ -13,3 +13,6 @@ MPESA_SHORTCODE: 174379
  * Running on http://192.168.106.95:5000
 [33mPress CTRL+C to quit[0m
  * Restarting with stat
+127.0.0.1 - - [13/Feb/2026 02:47:57] "[33mGET / HTTP/1.1[0m" 404 -
+127.0.0.1 - - [13/Feb/2026 02:47:57] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [13/Feb/2026 02:48:08] "GET /health HTTP/1.1" 200 -
