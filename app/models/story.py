@@ -4,14 +4,8 @@ Story Model.
 Handles beneficiary stories posted by charities.
 Donors can view these stories to see the impact of their donations.
 """
-from datetime import datetime, timezone
-
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class Story(db.Model):

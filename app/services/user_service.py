@@ -74,7 +74,7 @@ class UserService:
         Returns:
             User: User instance or None
         """
-        return User.query.get(user_id)
+        return db.session.get(User, user_id)
     
     @staticmethod
     def get_user(user_id):
@@ -87,7 +87,7 @@ class UserService:
         Returns:
             User: User instance or None
         """
-        return User.query.get(user_id)
+        return db.session.get(User, user_id)
     
     @staticmethod
     def get_by_email(email):
@@ -124,7 +124,7 @@ class UserService:
         Returns:
             User: Updated user or None if not found
         """
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return None
         
@@ -147,7 +147,7 @@ class UserService:
         Returns:
             bool: True if password changed successfully
         """
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return False
         

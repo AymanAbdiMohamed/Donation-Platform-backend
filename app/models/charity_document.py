@@ -3,14 +3,8 @@ CharityDocument Model.
 
 Handles document uploads for charity verification (tax documents, certificates, etc.).
 """
-from datetime import datetime, timezone
-
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class CharityDocument(db.Model):

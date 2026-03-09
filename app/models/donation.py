@@ -6,14 +6,8 @@ Handles donation records between donors and charities.
 A donation is created with status PENDING when an STK Push is initiated.
 The callback handler updates it to SUCCESS or FAILED.
 """
-from datetime import datetime, timezone
-
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class DonationStatus:

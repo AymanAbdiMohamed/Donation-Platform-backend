@@ -113,7 +113,7 @@ class CharityService:
 
     @staticmethod
     def get_application(application_id):
-        return CharityApplication.query.get(application_id)
+        return db.session.get(CharityApplication, application_id)
 
     @staticmethod
     def get_user_applications(user_id):
@@ -145,7 +145,7 @@ class CharityService:
         """
         Approve application and create charity.
         """
-        application = CharityApplication.query.get(application_id)
+        application = db.session.get(CharityApplication, application_id)
 
         if not application:
             raise ValueError("Application not found")
@@ -179,7 +179,7 @@ class CharityService:
         
         # Update user role to 'charity'
         from app.models import User
-        user = User.query.get(application.user_id)
+        user = db.session.get(User, application.user_id)
         if user:
             user.role = "charity"
         
@@ -189,7 +189,7 @@ class CharityService:
 
     @staticmethod
     def reject_application(application_id, reason=""):
-        application = CharityApplication.query.get(application_id)
+        application = db.session.get(CharityApplication, application_id)
 
         if not application:
             raise ValueError("Application not found")
@@ -212,7 +212,7 @@ class CharityService:
     def add_document(application_id, document_type, file_path,
                      original_filename, file_size=None, mime_type=None):
 
-        application = CharityApplication.query.get(application_id)
+        application = db.session.get(CharityApplication, application_id)
 
         if not application:
             raise ValueError("Application not found")
@@ -242,7 +242,7 @@ class CharityService:
 
     @staticmethod
     def delete_document(document_id):
-        document = CharityDocument.query.get(document_id)
+        document = db.session.get(CharityDocument, document_id)
 
         if not document:
             raise ValueError("Document not found")
@@ -258,7 +258,7 @@ class CharityService:
 
     @staticmethod
     def get_charity(charity_id):
-        return Charity.query.get(charity_id)
+        return db.session.get(Charity, charity_id)
 
     @staticmethod
     def get_charity_by_user(user_id):
@@ -275,7 +275,7 @@ class CharityService:
     @staticmethod
     def update_charity(charity_id, **kwargs):
 
-        charity = Charity.query.get(charity_id)
+        charity = db.session.get(Charity, charity_id)
         if not charity:
             return None
 
@@ -295,7 +295,7 @@ class CharityService:
     @staticmethod
     def deactivate_charity(charity_id):
 
-        charity = Charity.query.get(charity_id)
+        charity = db.session.get(Charity, charity_id)
         if not charity:
             return None
 
@@ -306,7 +306,7 @@ class CharityService:
     @staticmethod
     def activate_charity(charity_id):
 
-        charity = Charity.query.get(charity_id)
+        charity = db.session.get(Charity, charity_id)
         if not charity:
             return None
 
@@ -317,7 +317,7 @@ class CharityService:
     @staticmethod
     def get_charity_stats(charity_id):
 
-        charity = Charity.query.get(charity_id)
+        charity = db.session.get(Charity, charity_id)
         if not charity:
             return None
 

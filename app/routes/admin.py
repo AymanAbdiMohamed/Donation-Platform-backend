@@ -3,14 +3,17 @@ Admin Routes.
 
 Routes for admin users to manage the platform.
 """
+from datetime import datetime, timedelta, timezone
+
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import func
 
 from app.auth import role_required
 from app.services import UserService, CharityService, DonationService
-from app.models import User, Charity, CharityApplication
+from app.models import User, Charity, CharityApplication, Donation, DonationStatus
 from app.errors import bad_request, not_found
-from app.extensions import limiter
+from app.extensions import db, limiter
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -101,8 +104,6 @@ def deactivate_user(user_id):
         400: Cannot deactivate self or other admins
         404: User not found
     """
-    from flask_jwt_extended import get_jwt_identity
-    
     current_user_id = int(get_jwt_identity())
     
     # Prevent self-deactivation
@@ -119,7 +120,6 @@ def deactivate_user(user_id):
         return bad_request("Cannot deactivate admin accounts")
     
     user.is_active = False
-    from app.extensions import db
     db.session.commit()
     
     return jsonify({
@@ -151,7 +151,6 @@ def activate_user(user_id):
         return not_found("User not found")
     
     user.is_active = True
-    from app.extensions import db
     db.session.commit()
     
     return jsonify({
@@ -480,13 +479,8 @@ def get_analytics():
     """
     Get time-series analytics for charts.
     """
-    from sqlalchemy import func
-    from datetime import datetime, timedelta
-    from app.extensions import db
-    from app.models import Donation, DonationStatus
-
     # 1. Donations over last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     
     daily_stats = db.session.query(
         func.date(Donation.created_at).label('date'),
