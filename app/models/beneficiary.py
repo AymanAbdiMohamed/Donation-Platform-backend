@@ -4,14 +4,8 @@ Beneficiary Model.
 Tracks beneficiaries served by a charity, along with inventory items
 distributed to them.
 """
-from datetime import datetime, timezone
-
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class Beneficiary(db.Model):

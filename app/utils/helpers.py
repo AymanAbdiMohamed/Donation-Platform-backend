@@ -8,6 +8,41 @@ get_pagination_params are currently unused by any route or service.
 Either integrate them into routes/services or remove in next cleanup.
 """
 import re
+from datetime import datetime, timezone
+
+
+# ---------------------------------------------------------------------------
+# Shared timestamp helper — single canonical definition for all models/services
+# ---------------------------------------------------------------------------
+
+def utc_now():
+    """Return a timezone-aware UTC datetime."""
+    return datetime.now(timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# Shared phone normalisation helper — single canonical definition
+# ---------------------------------------------------------------------------
+
+_PHONE_RE = re.compile(r"^254\d{9}$")
+
+
+def normalise_phone(raw):
+    """Normalise a Kenyan phone number to 254XXXXXXXXX format.
+
+    Accepts +254XXXXXXXXX, 0XXXXXXXXX, or 254XXXXXXXXX.
+    Returns the normalised string, or None if invalid.
+    """
+    if not raw:
+        return None
+    cleaned = str(raw).strip().replace(" ", "").replace("-", "")
+    if cleaned.startswith("+"):
+        cleaned = cleaned[1:]
+    if cleaned.startswith("0"):
+        cleaned = "254" + cleaned[1:]
+    if _PHONE_RE.match(cleaned):
+        return cleaned
+    return None
 
 
 def validate_email(email):

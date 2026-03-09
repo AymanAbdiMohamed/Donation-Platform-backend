@@ -56,9 +56,6 @@ class MpesaClient:
         """Initialize client with configuration from Flask app."""
         self.env = current_app.config.get("MPESA_ENV", "sandbox")
         self.base_url = self._get_base_url()
-        print(f"DEBUG: MpesaClient initialized. Context: {current_app.name}")
-        print(f"DEBUG: MPESA_MOCK_MODE from config: {current_app.config.get('MPESA_MOCK_MODE')}")
-        print(f"DEBUG: MPESA_MOCK_MODE from environ: {os.environ.get('MPESA_MOCK_MODE')}")
         self._validate_config()
     
     def _get_base_url(self) -> str:
@@ -128,9 +125,7 @@ class MpesaClient:
             return "mock_access_token_12345"
         
         logger.info("Refreshing M-Pesa access token...")
-        
-        logger.info("Refreshing M-Pesa access token...")
-        
+
         consumer_key = self._get_config("MPESA_CONSUMER_KEY")
         consumer_secret = self._get_config("MPESA_CONSUMER_SECRET")
         

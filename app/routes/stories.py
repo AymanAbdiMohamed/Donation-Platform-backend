@@ -47,7 +47,7 @@ def get_public_stories():
 @stories_bp.route("/stories/<int:story_id>", methods=["GET"])
 def get_public_story(story_id):
     """Get a single published story (public access)."""
-    story = Story.query.get(story_id)
+    story = db.session.get(Story, story_id)
     if not story or not story.is_published:
         return not_found("Story not found")
     return jsonify({"story": story.to_dict()}), 200
@@ -122,7 +122,7 @@ def update_story(story_id):
     if not charity:
         return not_found("Charity not found")
 
-    story = Story.query.get(story_id)
+    story = db.session.get(Story, story_id)
     if not story or story.charity_id != charity.id:
         return not_found("Story not found")
 
@@ -162,7 +162,7 @@ def delete_story(story_id):
     if not charity:
         return not_found("Charity not found")
 
-    story = Story.query.get(story_id)
+    story = db.session.get(Story, story_id)
     if not story or story.charity_id != charity.id:
         return not_found("Story not found")
 

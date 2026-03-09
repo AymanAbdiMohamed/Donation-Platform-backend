@@ -5,10 +5,8 @@ Handles generation of donation receipts and email formatting.
 """
 from datetime import datetime, timezone
 
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.extensions import db
+from app.utils.helpers import utc_now
 
 
 class ReceiptService:
@@ -29,14 +27,14 @@ class ReceiptService:
             ValueError: If donation not found
         """
         from app.models import Donation, User, Charity
-        
-        donation = Donation.query.get(donation_id)
-        
+
+        donation = db.session.get(Donation, donation_id)
+
         if not donation:
             raise ValueError("Donation not found")
-        
-        donor = User.query.get(donation.donor_id)
-        charity = Charity.query.get(donation.charity_id)
+
+        donor = db.session.get(User, donation.donor_id)
+        charity = db.session.get(Charity, donation.charity_id)
         
         if not donor or not charity:
             raise ValueError("Donor or charity not found")
@@ -132,13 +130,13 @@ Generated: {receipt['generated_at']}
         """
         from app.models import Donation, User
         from app.utils.email import send_email
-        
-        donation = Donation.query.get(donation_id)
-        
+
+        donation = db.session.get(Donation, donation_id)
+
         if not donation:
             raise ValueError("Donation not found")
-        
-        donor = User.query.get(donation.donor_id)
+
+        donor = db.session.get(User, donation.donor_id)
         
         if not donor:
             raise ValueError("Donor not found")

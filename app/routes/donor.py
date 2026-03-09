@@ -3,33 +3,23 @@ Donor Routes.
 
 Routes for donor users to browse charities and make donations.
 """
-import re
+import time
+import uuid
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, make_response, request, jsonify
 from flask_jwt_extended import get_jwt_identity
 
 from app.auth import role_required
 from app.services import CharityService, DonationService, ReceiptService, PaymentService
 from app.errors import bad_request, not_found
-from app.extensions import limiter
+from app.extensions import db, limiter
+from app.utils.helpers import normalise_phone
 from app.utils.pesapal import PesapalClient
 
+import logging
+
 donor_bp = Blueprint("donor", __name__)
-
-# Simple regex for Kenyan phone numbers: 254XXXXXXXXX (12 digits)
-_PHONE_RE = re.compile(r"^254\d{9}$")
-
-
-def _normalise_phone(raw):
-    """Normalise a phone number to 254XXXXXXXXX.  Returns None on failure."""
-    raw = str(raw).strip().replace(" ", "").replace("-", "")
-    if raw.startswith("+"):
-        raw = raw[1:]
-    if raw.startswith("0"):
-        raw = "254" + raw[1:]
-    if _PHONE_RE.match(raw):
-        return raw
-    return None
+logger = logging.getLogger(__name__)
 
 
 # ── Charity browsing ────────────────────────────────────────────────
@@ -148,7 +138,7 @@ def create_donation_direct():
     try:
         amount_cents = int(float(amount) * 100)
         donation = DonationService.create_donation_after_payment(
-            checkout_request_id=f"DIRECT-{user_id}",
+            checkout_request_id=f"DIRECT-{user_id}-{uuid.uuid4().hex[:8]}",
             donor_id=user_id,
             charity_id=charity_id,
             amount_cents=amount_cents,
@@ -216,8 +206,6 @@ def email_donation_receipt(donation_id):
 @role_required("donor")
 def get_donation_receipt_pdf(donation_id):
     """Get PDF receipt for a specific donation."""
-    from flask import make_response
-    
     user_id = int(get_jwt_identity())
     donation = DonationService.get_donation(donation_id)
     if not donation or donation.donor_id != user_id:
@@ -318,21 +306,20 @@ def create_pesapal_donation():
         return not_found("Charity not found")
     
     # Normalize phone
-    normalized_phone = _normalise_phone(phone)
+    normalized_phone = normalise_phone(phone)
     if not normalized_phone:
         return bad_request("Invalid phone number format. Use 254XXXXXXXXX")
-    
+
     try:
         amount_float = float(amount)
         if amount_float < 1:
             return bad_request("Amount must be at least 1 KES")
     except (ValueError, TypeError):
         return bad_request("Invalid amount")
-    
-    # Generate unique reference
-    import time
-    reference = f"DON-{user_id}-{int(time.time())}"
-    
+
+    # Generate unique reference (timestamp + uuid fragment)
+    reference = f"DON-{user_id}-{int(time.time())}-{uuid.uuid4().hex[:6]}"
+
     # Create pending donation record
     donation = DonationService.create_donation(
         donor_id=user_id,
@@ -342,17 +329,16 @@ def create_pesapal_donation():
         is_recurring=False,
         message=message
     )
-    
+
     # Update with reference
     donation.checkout_request_id = reference
-    from app.extensions import db
     db.session.commit()
-    
+
     # Initiate Pesapal payment
     try:
         client = PesapalClient()
         callback_url = f"{request.host_url.rstrip('/')}/api/pesapal/callback"
-        
+
         result = client.initiate_payment(
             amount=amount_float,
             description=f"Donation to {charity.name}",
@@ -361,7 +347,7 @@ def create_pesapal_donation():
             phone=normalized_phone,
             callback_url=callback_url
         )
-        
+
         if result.get("success"):
             return jsonify({
                 "success": True,
@@ -375,10 +361,9 @@ def create_pesapal_donation():
                 "success": False,
                 "error": result.get("error", "Payment initiation failed")
             }), 500
-            
+
     except Exception as e:
-        import logging
-        logging.error(f"Pesapal payment error: {e}")
+        logger.error(f"Pesapal payment error: {e}")
         return jsonify({
             "success": False,
             "error": "Payment gateway error"

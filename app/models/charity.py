@@ -3,14 +3,8 @@ Charity and CharityApplication Models.
 
 Handles charity organizations and their application process.
 """
-from datetime import datetime, timezone
-
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class CharityApplication(db.Model):

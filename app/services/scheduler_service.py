@@ -3,16 +3,14 @@ Scheduler Service.
 
 Handles background tasks for recurring donations.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from app.extensions import db, scheduler
 from app.models import Subscription, SubscriptionStatus, Donation
 from app.services import PaymentService, DonationService
+from app.utils.helpers import utc_now
 import logging
 
 logger = logging.getLogger(__name__)
-
-def utc_now():
-    return datetime.now(timezone.utc)
 
 class SchedulerService:
     @staticmethod

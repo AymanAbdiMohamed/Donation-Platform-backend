@@ -83,7 +83,7 @@ def update_beneficiary(beneficiary_id):
     if not charity:
         return not_found("Charity not found")
 
-    beneficiary = Beneficiary.query.get(beneficiary_id)
+    beneficiary = db.session.get(Beneficiary, beneficiary_id)
     if not beneficiary or beneficiary.charity_id != charity.id:
         return not_found("Beneficiary not found")
 
@@ -117,7 +117,7 @@ def delete_beneficiary(beneficiary_id):
     if not charity:
         return not_found("Charity not found")
 
-    beneficiary = Beneficiary.query.get(beneficiary_id)
+    beneficiary = db.session.get(Beneficiary, beneficiary_id)
     if not beneficiary or beneficiary.charity_id != charity.id:
         return not_found("Beneficiary not found")
 
@@ -138,7 +138,7 @@ def get_inventory(beneficiary_id):
     if not charity:
         return not_found("Charity not found")
 
-    beneficiary = Beneficiary.query.get(beneficiary_id)
+    beneficiary = db.session.get(Beneficiary, beneficiary_id)
     if not beneficiary or beneficiary.charity_id != charity.id:
         return not_found("Beneficiary not found")
 
@@ -162,7 +162,7 @@ def add_inventory_item(beneficiary_id):
     if not charity:
         return not_found("Charity not found")
 
-    beneficiary = Beneficiary.query.get(beneficiary_id)
+    beneficiary = db.session.get(Beneficiary, beneficiary_id)
     if not beneficiary or beneficiary.charity_id != charity.id:
         return not_found("Beneficiary not found")
 
@@ -206,11 +206,11 @@ def delete_inventory_item(item_id):
     if not charity:
         return not_found("Charity not found")
 
-    item = InventoryItem.query.get(item_id)
+    item = db.session.get(InventoryItem, item_id)
     if not item:
         return not_found("Item not found")
 
-    beneficiary = Beneficiary.query.get(item.beneficiary_id)
+    beneficiary = db.session.get(Beneficiary, item.beneficiary_id)
     if not beneficiary or beneficiary.charity_id != charity.id:
         return not_found("Item not found")
 

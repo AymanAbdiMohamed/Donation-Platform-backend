@@ -6,8 +6,6 @@ All routes require JWT authentication.
 
 Prefix: /api/donations  (registered in app factory)
 """
-import re
-
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import get_jwt_identity
 
@@ -15,23 +13,9 @@ from app.auth import role_required
 from app.services import CharityService, DonationService, PaymentService
 from app.errors import bad_request, not_found
 from app.extensions import limiter
+from app.utils.helpers import normalise_phone
 
 donations_api_bp = Blueprint("donations_api", __name__)
-
-# Simple regex for Kenyan phone numbers: 254XXXXXXXXX (12 digits)
-_PHONE_RE = re.compile(r"^254\d{9}$")
-
-
-def _normalise_phone(raw):
-    """Normalise a phone number to 254XXXXXXXXX. Returns None on failure."""
-    raw = str(raw).strip().replace(" ", "").replace("-", "")
-    if raw.startswith("+"):
-        raw = raw[1:]
-    if raw.startswith("0"):
-        raw = "254" + raw[1:]
-    if _PHONE_RE.match(raw):
-        return raw
-    return None
 
 
 @donations_api_bp.route("/mpesa", methods=["POST"])
@@ -71,7 +55,7 @@ def initiate_mpesa_donation():
         return bad_request("Invalid amount")
 
     # Validate phone
-    phone = _normalise_phone(phone_raw)
+    phone = normalise_phone(phone_raw)
     if not phone:
         return bad_request(
             "Invalid phone number. Use format 254XXXXXXXXX or 07XXXXXXXX"
@@ -189,7 +173,7 @@ def create_manual_donation():
     except (ValueError, TypeError):
         return bad_request("Invalid amount")
 
-    phone = _normalise_phone(phone_raw)
+    phone = normalise_phone(phone_raw)
     if not phone:
         return bad_request("Invalid phone number")
 
