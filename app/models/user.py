@@ -3,15 +3,10 @@ User Model.
 
 Handles user data including authentication credentials and role management.
 """
-from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
-""" imports"""
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class User(db.Model):

@@ -26,7 +26,7 @@ services:
     startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT run_app:app --timeout 120 --log-level info
     
     # Health Check (Render pings this to verify service is running)
-    healthCheckPath: /health
+    healthCheckPath: /api/health
     
     # Environment Variables
     envVars:
@@ -115,3 +115,38 @@ services:
       
       - key: MAX_CONTENT_LENGTH
         value: "16777216"  # 16MB max upload size
+
+      # ==================== Pesapal Payment Gateway ====================
+      - key: PESAPAL_CONSUMER_KEY
+        sync: false  # Set in Render dashboard from Pesapal merchant portal
+
+      - key: PESAPAL_CONSUMER_SECRET
+        sync: false  # Set in Render dashboard from Pesapal merchant portal
+
+      - key: PESAPAL_CALLBACK_URL
+        sync: false  # Set to: https://<your-backend>.onrender.com/api/pesapal/callback
+
+      - key: PESAPAL_ENV
+        value: sandbox  # Change to 'production' after Pesapal approval
+
+      # ==================== Email Configuration ====================
+      - key: MAIL_SERVER
+        sync: false  # e.g. smtp.mailtrap.io
+
+      - key: MAIL_PORT
+        value: "587"
+
+      - key: MAIL_USE_TLS
+        value: "true"
+
+      - key: MAIL_USERNAME
+        sync: false
+
+      - key: MAIL_PASSWORD
+        sync: false
+
+      # ==================== Rate Limiting ====================
+      # Leave empty to use in-memory (single process only).
+      # Set a Redis URL for multi-worker production deployments.
+      - key: RATELIMIT_STORAGE_URI
+        sync: false  # e.g. redis://red-xxx.render.com:6379

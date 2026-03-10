@@ -12,7 +12,7 @@ TODO: Replace local storage with a durable object-store before production scale.
 import os
 import uuid
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.utils import secure_filename
 from flask import current_app
 
@@ -130,7 +130,7 @@ def generate_secure_filename(original_filename):
         ext = '.' + secure_name.rsplit('.', 1)[-1].lower()
     
     # Generate unique filename with timestamp and UUID
-    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     unique_id = str(uuid.uuid4())[:8]
     
     return f"{timestamp}_{unique_id}{ext}"
@@ -152,7 +152,7 @@ def generate_storage_path(file_type, user_id, filename):
     secure_filename = generate_secure_filename(filename)
     
     # Create path structure: type/year/month/user_id/filename
-    date_parts = datetime.utcnow().strftime('%Y/%m')
+    date_parts = datetime.now(timezone.utc).strftime('%Y/%m')
     
     path = f"{file_type}/{date_parts}/{user_id}/{secure_filename}"
     

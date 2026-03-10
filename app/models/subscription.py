@@ -3,14 +3,10 @@ Subscription Model.
 
 Tracks recurring donation commitments.
 """
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 
 from app.extensions import db
-
-
-def utc_now():
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from app.utils.helpers import utc_now
 
 
 class SubscriptionStatus:

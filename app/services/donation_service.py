@@ -93,7 +93,7 @@ class DonationService:
         """
         Submit the M-Pesa transaction code for a manual donation.
         """
-        donation = Donation.query.get(donation_id)
+        donation = db.session.get(Donation, donation_id)
         if not donation:
             return None
         
@@ -228,7 +228,7 @@ class DonationService:
 
     @staticmethod
     def get_donation(donation_id):
-        return Donation.query.get(donation_id)
+        return db.session.get(Donation, donation_id)
 
     @staticmethod
     def get_donation_by_checkout(checkout_request_id):
