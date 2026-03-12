@@ -211,18 +211,19 @@ def get_donation_receipt_pdf(donation_id):
     if not donation or donation.donor_id != user_id:
         return not_found("Donation not found")
 
+    pdf_content = ReceiptService.generate_pdf_receipt(donation_id)
+    if pdf_content is None:
+        return jsonify({
+            "error": "PDF receipts are temporarily unavailable."
+        }), 503
+
     try:
-        pdf_content = ReceiptService.generate_pdf_receipt(donation_id)
-        
         response = make_response(pdf_content)
         response.headers["Content-Type"] = "application/pdf"
         response.headers["Content-Disposition"] = f"attachment; filename=receipt_{donation_id}.pdf"
         return response
-        
     except ValueError as e:
         return bad_request(str(e))
-    except ImportError:
-        return bad_request("PDF generation service unavailable")
 
 
 
