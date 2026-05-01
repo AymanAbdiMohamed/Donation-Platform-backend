@@ -43,8 +43,7 @@ Your donation platform now accepts **fake donations** with instant success - per
 
 ## Production Deployment
 
-**Railway Environment Variables:**
-Add this to your Railway variables:
+Add this to your server environment file (`.env`):
 ```
 MPESA_MOCK_MODE="True"
 ```

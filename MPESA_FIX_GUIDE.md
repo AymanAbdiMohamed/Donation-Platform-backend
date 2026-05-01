@@ -31,9 +31,9 @@ MPESA_CONSUMER_SECRET=your_actual_consumer_secret_here
 MPESA_SHORTCODE=174379
 MPESA_PASSKEY=bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed191
 
-# Callback URLs - update to your Railway backend
-MPESA_STK_CALLBACK_URL=https://web-production-63323.up.railway.app/api/donations/mpesa/callback
-MPESA_TIMEOUT_URL=https://web-production-63323.up.railway.app/api/donations/mpesa/timeout
+# Callback URLs - set to your deployed backend domain
+MPESA_STK_CALLBACK_URL=https://your-backend-domain.com/api/mpesa/callback
+MPESA_TIMEOUT_URL=https://your-backend-domain.com/api/mpesa/timeout
 ```
 
 ### 3. Test Your Configuration
@@ -127,8 +127,8 @@ print(f"Environment: {os.getenv('MPESA_ENV', 'NOT SET')}")
    - Never use production credentials for testing
 
 3. **Callback URL Issues**
-   - Update callback URLs to your deployed Railway backend
-   - Ensure URLs are accessible from the internet
+   - Update callback URLs to your deployed backend domain
+   - Ensure URLs are accessible from the internet (use ngrok for local testing)
 
 ## 🎯 Expected Results
 
